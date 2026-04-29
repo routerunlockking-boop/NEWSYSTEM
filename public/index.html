@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartZone POS - Router Inventory & Billing</title>
+    <meta name="description" content="SmartZone POS System for Router Sales, IMEI Tracking & Warranty Management">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay" class="auth-overlay active">
+    <div class="auth-box">
+        <div class="auth-header">
+            <h2><i class='bx bx-store-alt'></i> SmartZone POS</h2>
+            <p id="auth-subtitle">Login to your account</p>
+        </div>
+        <form id="login-form" class="auth-form active">
+            <div class="form-group"><label>Email</label><input type="text" id="login-email" class="form-control" required placeholder="Email"></div>
+            <div class="form-group"><label>Password</label><input type="password" id="login-password" class="form-control" required placeholder="Password"></div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Login</button>
+            <div class="auth-switch">No account? <span id="switch-to-register">Register</span></div>
+        </form>
+        <form id="register-form" class="auth-form">
+            <div class="form-group"><label>Business Name</label><input type="text" id="reg-business" class="form-control" required></div>
+            <div class="form-group"><label>Email</label><input type="email" id="reg-email" class="form-control" required></div>
+            <div class="form-group"><label>Password</label><input type="password" id="reg-password" class="form-control" required></div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Register</button>
+            <div class="auth-switch">Have account? <span id="switch-to-login">Login</span></div>
+        </form>
+    </div>
+</div>
+
+<!-- APP -->
+<aside class="sidebar" id="sidebar">
+    <div class="logo-box"><i class='bx bx-store-alt'></i><span>SmartZone</span></div>
+    <ul class="nav-list">
+        <li><a href="#" class="nav-link active" data-target="dashboard-view" data-title="Dashboard"><i class='bx bx-grid-alt'></i><span>Dashboard</span></a></li>
+        <li><a href="#" class="nav-link" data-target="pos-view" data-title="New Bill"><i class='bx bx-cart'></i><span>New Bill</span></a></li>
+        <li><a href="#" class="nav-link" data-target="inventory-view" data-title="Inventory"><i class='bx bx-box'></i><span>Inventory</span></a></li>
+        <li><a href="#" class="nav-link" data-target="imei-view" data-title="IMEI Management"><i class='bx bx-chip'></i><span>IMEI Tracker</span></a></li>
+        <li><a href="#" class="nav-link" data-target="warranty-view" data-title="Warranty"><i class='bx bx-shield-quarter'></i><span>Warranty</span></a></li>
+        <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
+        <li><a href="#" class="nav-link" data-target="invoices-view" data-title="Invoices"><i class='bx bx-receipt'></i><span>Invoices</span></a></li>
+        <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
+        <li><a href="#" class="nav-link" data-target="reports-view" data-title="Reports"><i class='bx bx-bar-chart-alt-2'></i><span>Reports</span></a></li>
+        <li class="nav-divider" id="nav-admin-divider" style="display:none"></li>
+        <li id="nav-admin-item" style="display:none"><a href="#" class="nav-link" data-target="admin-view" data-title="Admin"><i class='bx bx-cog'></i><span>Admin</span></a></li>
+    </ul>
+</aside>
+
+<div class="main-wrap">
+    <header class="top-bar">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <button class="btn-ghost" id="btn-menu" style="display:none;font-size:24px"><i class='bx bx-menu'></i></button>
+            <h1 id="page-title">Dashboard</h1>
+        </div>
+        <div class="top-bar-right">
+            <button class="btn-ghost" id="btn-theme" title="Toggle Theme"><i class='bx bx-moon' style="font-size:20px"></i></button>
+            <div class="clock-badge" id="clock">00:00</div>
+            <div class="user-badge">
+                <span id="biz-name">Admin</span>
+                <button class="btn btn-outline btn-sm" id="btn-logout"><i class='bx bx-log-out'></i></button>
+            </div>
+        </div>
+    </header>
+
+    <div class="views-wrap">
+        <!-- DASHBOARD -->
+        <section id="dashboard-view" class="view active">
+            <div class="dash-grid" id="dash-grid"></div>
+            <div class="table-card"><div class="card-head"><h2>Low Stock Alert</h2></div>
+                <div class="table-responsive"><table class="data-table" id="low-stock-table"><thead><tr><th>Product</th><th>Qty</th><th>Type</th></tr></thead><tbody></tbody></table></div>
+            </div>
+        </section>
+
+        <!-- POS -->
+        <section id="pos-view" class="view">
+            <div class="pos-grid">
+                <div class="pos-left">
+                    <div class="pos-search-bar">
+                        <div class="scanner-input" style="flex:1"><i class='bx bx-barcode'></i><input type="text" id="pos-scan" class="form-control" placeholder="Scan IMEI or barcode... (Enter)"></div>
+                        <div class="search-input" style="flex:1"><i class='bx bx-search' style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i><input type="text" id="pos-search" class="form-control" style="padding-left:40px" placeholder="Search products..."></div>
+                    </div>
+                    <div class="pos-items-grid" id="pos-products"></div>
+                </div>
+                <div class="pos-right">
+                    <div class="bill-head"><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
+                    <!-- Customer box for IMEI sales -->
+                    <div class="customer-box" id="pos-customer-box" style="display:none">
+                        <h4><i class='bx bx-user'></i> Customer Details (Required for IMEI items)</h4>
+                        <div class="form-row">
+                            <div class="form-group"><label>Name *</label><input type="text" id="pos-cust-name" class="form-control" placeholder="Customer name"></div>
+                            <div class="form-group"><label>Phone *</label><input type="tel" id="pos-cust-phone" class="form-control" placeholder="Phone number"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>NIC *</label><input type="text" id="pos-cust-nic" class="form-control" placeholder="NIC number"></div>
+                            <div class="form-group"><label>Email</label><input type="email" id="pos-cust-email" class="form-control" placeholder="Email (optional)"></div>
+                        </div>
+                        <div class="form-group"><label>Address *</label><input type="text" id="pos-cust-address" class="form-control" placeholder="Address"></div>
+                    </div>
+                    <div class="bill-items" id="bill-items"></div>
+                    <div class="bill-foot">
+                        <div class="form-row" style="margin-bottom:12px">
+                            <div class="form-group" style="margin-bottom:0"><label>Payment</label>
+                                <select id="pos-payment" class="form-control"><option>Cash</option><option>Bank Payment</option><option>COD</option></select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0"><label>Amount Paid</label>
+                                <input type="number" id="pos-paid" class="form-control" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="summary-row"><span>Subtotal</span><span id="pos-subtotal">0.00</span></div>
+                        <div class="summary-row"><span>Balance</span><span id="pos-balance">0.00</span></div>
+                        <div class="summary-row total"><span>TOTAL</span><span id="pos-total">0.00</span></div>
+                        <button class="btn btn-primary btn-block btn-lg" id="btn-submit-bill"><i class='bx bx-printer'></i> Submit & Print</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INVENTORY -->
+        <section id="inventory-view" class="view">
+            <div class="view-head"><h2>Inventory Management</h2>
+                <div class="view-actions">
+                    <button class="btn btn-primary" id="btn-add-product"><i class='bx bx-plus'></i> Add Product</button>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="inv-table"><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Cost</th><th>Price</th><th>Type</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- IMEI MANAGEMENT -->
+        <section id="imei-view" class="view">
+            <div class="view-head"><h2>IMEI / Serial Tracker</h2>
+                <div class="view-actions">
+                    <div class="scanner-input"><i class='bx bx-search'></i><input type="text" id="imei-search" class="form-control" placeholder="Search IMEI, phone, NIC..." style="width:280px"></div>
+                    <select id="imei-status-filter" class="form-control" style="width:160px"><option value="">All Status</option>
+                        <option>In Stock</option><option>Sold</option><option>Returned</option><option>Under Repair</option>
+                        <option>Sent to SLT</option><option>Received from SLT</option><option>Delivered to Customer</option>
+                        <option>Replaced</option><option>Rejected</option><option>Cancelled</option>
+                    </select>
+                    <button class="btn btn-primary" id="btn-add-imei"><i class='bx bx-plus'></i> Add IMEI Stock</button>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="imei-table"><thead><tr><th>IMEI</th><th>Product</th><th>Status</th><th>Customer</th><th>Warranty</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- WARRANTY -->
+        <section id="warranty-view" class="view">
+            <div class="view-head"><h2>Warranty Lookup</h2></div>
+            <div style="max-width:600px;margin:0 auto 28px">
+                <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="warranty-scan" class="form-control" placeholder="Scan or enter IMEI number..." style="font-size:16px;padding:14px 14px 14px 44px"></div>
+                <button class="btn btn-primary btn-block btn-lg" id="btn-warranty-lookup" style="margin-top:12px"><i class='bx bx-search'></i> Lookup Warranty</button>
+            </div>
+            <div id="warranty-result" style="display:none"></div>
+        </section>
+
+        <!-- CUSTOMERS -->
+        <section id="customers-view" class="view">
+            <div class="view-head"><h2>Customers</h2>
+                <div class="view-actions">
+                    <input type="text" id="cust-search" class="form-control" placeholder="Search..." style="width:220px">
+                    <button class="btn btn-primary" id="btn-add-customer"><i class='bx bx-user-plus'></i> Add Customer</button>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="cust-table"><thead><tr><th>Name</th><th>Phone</th><th>NIC</th><th>Email</th><th>Address</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- INVOICES -->
+        <section id="invoices-view" class="view">
+            <div class="view-head"><h2>Invoices</h2>
+                <div class="view-actions">
+                    <input type="date" id="inv-filter-date" class="form-control" style="width:160px">
+                    <input type="month" id="inv-filter-month" class="form-control" style="width:160px">
+                    <button class="btn btn-outline" id="btn-clear-inv-filter">Clear</button>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="invoices-table"><thead><tr><th>Invoice#</th><th>Date</th><th>Customer</th><th>Total</th><th>Profit</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- SLT REPORTS -->
+        <section id="slt-view" class="view">
+            <div class="view-head"><h2>Monthly SLT Report</h2>
+                <div class="view-actions">
+                    <input type="month" id="slt-month" class="form-control" style="width:180px">
+                    <button class="btn btn-primary" id="btn-slt-generate"><i class='bx bx-search'></i> Generate</button>
+                    <button class="btn btn-success" id="btn-slt-export"><i class='bx bx-download'></i> Export Excel</button>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="slt-table"><thead><tr><th>No.</th><th>IMEI</th><th>Router Model</th><th>Customer</th><th>Phone</th><th>NIC</th><th>Date</th><th>Warranty</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="reports-view" class="view">
+            <div class="view-head"><h2>Business Reports</h2></div>
+            <div style="display:flex;gap:10px;margin-bottom:20px">
+                <button class="btn btn-primary tab-btn active" data-report="sales">Sales Report</button>
+                <button class="btn btn-outline tab-btn" data-report="products">Product Sales</button>
+            </div>
+            <div class="table-card"><div class="table-responsive"><table class="data-table" id="reports-table"><thead></thead><tbody></tbody></table></div></div>
+        </section>
+
+        <!-- ADMIN -->
+        <section id="admin-view" class="view">
+            <div class="view-head"><h2>Manage Accounts</h2></div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="admin-table"><thead><tr><th>Business</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+    </div>
+</div>
+
+<!-- MODALS -->
+<!-- Product Modal -->
+<div class="modal-bg" id="modal-product"><div class="modal"><div class="modal-head"><h3 id="product-modal-title">Add Product</h3><button class="close-btn" onclick="closeModal('modal-product')">&times;</button></div>
+<div class="modal-body"><form id="product-form">
+    <input type="hidden" id="prod-id">
+    <div class="form-row"><div class="form-group"><label>Product Name *</label><input type="text" id="prod-name" class="form-control" required></div>
+        <div class="form-group"><label>Category</label><select id="prod-category" class="form-control"><option>Routers</option><option>Accessories</option><option>Cables</option><option>SIM Cards</option><option>Other</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Cost Price</label><input type="number" id="prod-cost" class="form-control" step="0.01" value="0"></div>
+        <div class="form-group"><label>Selling Price *</label><input type="number" id="prod-price" class="form-control" step="0.01" required></div></div>
+    <div class="form-group"><label><input type="checkbox" id="prod-imei-tracked"> <strong>IMEI/Serial Number Tracked</strong></label></div>
+    <div id="prod-normal-fields">
+        <div class="form-group"><label>Quantity</label><input type="number" id="prod-qty" class="form-control" value="0"></div>
+    </div>
+    <div id="prod-imei-fields" style="display:none">
+        <div class="form-group"><label>Default Warranty (months)</label><input type="number" id="prod-warranty" class="form-control" value="12"></div>
+        <p style="font-size:12px;color:var(--text-muted)"><i class='bx bx-info-circle'></i> Stock for IMEI items is managed by adding individual IMEI numbers in the IMEI Tracker.</p>
+    </div>
+    <div class="form-group"><label>Barcode / SKU</label><input type="text" id="prod-barcode" class="form-control" placeholder="Optional"></div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-product')">Cancel</button><button class="btn btn-primary" id="btn-save-product">Save Product</button></div>
+</div></div>
+
+<!-- Add IMEI Modal -->
+<div class="modal-bg" id="modal-imei"><div class="modal modal-wide"><div class="modal-head"><h3>Add IMEI Stock</h3><button class="close-btn" onclick="closeModal('modal-imei')">&times;</button></div>
+<div class="modal-body"><form id="imei-form">
+    <div class="form-group"><label>Select Product (IMEI Tracked)</label><select id="imei-product" class="form-control"></select></div>
+    <div class="form-row"><div class="form-group"><label>Purchase Price</label><input type="number" id="imei-purchase-price" class="form-control" step="0.01"></div>
+        <div class="form-group"><label>Selling Price</label><input type="number" id="imei-selling-price" class="form-control" step="0.01"></div>
+        <div class="form-group"><label>Warranty (months)</label><input type="number" id="imei-warranty" class="form-control" value="12"></div></div>
+    <div class="form-group"><label>IMEI Numbers (one per line)</label>
+        <textarea id="imei-numbers" class="form-control" rows="8" placeholder="Enter each IMEI number on a new line...&#10;353456789012345&#10;353456789012346&#10;353456789012347"></textarea></div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-imei')">Cancel</button><button class="btn btn-primary" id="btn-save-imei">Add IMEI Items</button></div>
+</div></div>
+
+<!-- IMEI Detail / Status Modal -->
+<div class="modal-bg" id="modal-imei-detail"><div class="modal modal-wide"><div class="modal-head"><h3>IMEI Details</h3><button class="close-btn" onclick="closeModal('modal-imei-detail')">&times;</button></div>
+<div class="modal-body" id="imei-detail-body"></div>
+<div class="modal-foot" id="imei-detail-foot"></div>
+</div></div>
+
+<!-- Customer Modal -->
+<div class="modal-bg" id="modal-customer"><div class="modal"><div class="modal-head"><h3 id="cust-modal-title">Add Customer</h3><button class="close-btn" onclick="closeModal('modal-customer')">&times;</button></div>
+<div class="modal-body"><form id="customer-form">
+    <input type="hidden" id="cust-id">
+    <div class="form-group"><label>Name *</label><input type="text" id="cust-name" class="form-control" required></div>
+    <div class="form-row"><div class="form-group"><label>Phone *</label><input type="tel" id="cust-phone" class="form-control" required></div>
+        <div class="form-group"><label>NIC Number</label><input type="text" id="cust-nic" class="form-control"></div></div>
+    <div class="form-group"><label>Email</label><input type="email" id="cust-email" class="form-control"></div>
+    <div class="form-group"><label>Address</label><input type="text" id="cust-addr" class="form-control"></div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-customer')">Cancel</button><button class="btn btn-primary" id="btn-save-customer">Save</button></div>
+</div></div>
+
+<!-- Invoice Detail Modal -->
+<div class="modal-bg" id="modal-invoice"><div class="modal"><div class="modal-head"><h3>Invoice Details</h3><button class="close-btn" onclick="closeModal('modal-invoice')">&times;</button></div>
+<div class="modal-body" id="invoice-detail-body"></div>
+</div></div>
+
+<!-- Status Change Modal -->
+<div class="modal-bg" id="modal-status"><div class="modal"><div class="modal-head"><h3>Update Status</h3><button class="close-btn" onclick="closeModal('modal-status')">&times;</button></div>
+<div class="modal-body">
+    <input type="hidden" id="status-imei-id">
+    <div class="form-group"><label>New Status</label>
+        <select id="status-new" class="form-control">
+            <option>Returned</option><option>Under Repair</option><option>Sent to SLT</option>
+            <option>Received from SLT</option><option>Delivered to Customer</option>
+            <option>Replaced</option><option>Rejected</option><option>Cancelled</option>
+        </select>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="status-notes" class="form-control" rows="3" placeholder="Add notes..."></textarea></div>
+    <div class="form-group"><label><input type="checkbox" id="status-send-email"> Send email notification to customer</label></div>
+</div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-status')">Cancel</button><button class="btn btn-primary" id="btn-save-status">Update Status</button></div>
+</div></div>
+
+<!-- Print Area -->
+<div id="print-area" style="display:none"></div>
+
+<script src="/modules.js"></script>
+<script src="/modules2.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

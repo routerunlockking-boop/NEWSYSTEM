@@ -1,0 +1,250 @@
+// === DASHBOARD ===
+async function loadDashboard() {
+    try {
+        const res = await api('/dashboard');
+        if (!res) return;
+        const d = await res.json();
+        document.getElementById('dash-grid').innerHTML = `
+            <div class="stat-card"><div class="stat-icon"><i class='bx bx-receipt'></i></div><div class="stat-info"><h3>Bills Today</h3><p>${d.totalBillsToday}</p></div></div>
+            <div class="stat-card"><div class="stat-icon green"><i class='bx bx-money'></i></div><div class="stat-info"><h3>Daily Income</h3><p>Rs. ${(d.dailyIncome||0).toLocaleString()}</p></div></div>
+            <div class="stat-card"><div class="stat-icon green"><i class='bx bx-trending-up'></i></div><div class="stat-info"><h3>Daily Profit</h3><p>Rs. ${(d.dailyProfit||0).toLocaleString()}</p></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class='bx bx-calendar'></i></div><div class="stat-info"><h3>Monthly Bills</h3><p>${d.totalBillsMonth}</p></div></div>
+            <div class="stat-card"><div class="stat-icon green"><i class='bx bx-wallet'></i></div><div class="stat-info"><h3>Monthly Income</h3><p>Rs. ${(d.monthlyIncome||0).toLocaleString()}</p></div></div>
+            <div class="stat-card"><div class="stat-icon blue"><i class='bx bx-chip'></i></div><div class="stat-info"><h3>IMEI In Stock</h3><p>${d.imeiInStock||0}</p></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class='bx bx-box'></i></div><div class="stat-info"><h3>Products</h3><p>${d.totalProducts}</p></div></div>
+            <div class="stat-card"><div class="stat-icon red"><i class='bx bx-error'></i></div><div class="stat-info"><h3>Low Stock</h3><p>${d.lowStockProducts}</p></div></div>`;
+        const lr = await api('/dashboard/low-stock');
+        if (!lr) return;
+        const low = await lr.json();
+        const tb = document.querySelector('#low-stock-table tbody');
+        tb.innerHTML = low.map(p => `<tr><td>${p.name}</td><td class="${p.quantity<=5?'text-danger':''}">${p.quantity}</td><td>${p.is_imei_tracked?'<span class="badge badge-blue">IMEI</span>':'Normal'}</td></tr>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+// === INVENTORY ===
+async function loadInventory() {
+    try {
+        const res = await api('/products?lite=true');
+        if (!res) return;
+        products = await res.json();
+        const tb = document.querySelector('#inv-table tbody');
+        tb.innerHTML = products.map(p => `<tr>
+            <td><strong>${p.name}</strong></td><td>${p.category||'General'}</td>
+            <td class="${p.quantity<=10?'text-danger':''}"><strong>${p.quantity}</strong></td>
+            <td>Rs. ${(p.cost_price||0).toLocaleString()}</td><td>Rs. ${p.price.toLocaleString()}</td>
+            <td>${p.is_imei_tracked?'<span class="badge badge-blue"><i class="bx bx-chip"></i> IMEI</span>':'<span class="badge badge-gray">Normal</span>'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')"><i class='bx bx-edit'></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')"><i class='bx bx-trash'></i></button></td>
+        </tr>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+function setupProductModal() {
+    document.getElementById('prod-imei-tracked').onchange = function() {
+        document.getElementById('prod-normal-fields').style.display = this.checked ? 'none' : 'block';
+        document.getElementById('prod-imei-fields').style.display = this.checked ? 'block' : 'none';
+    };
+    document.getElementById('btn-add-product').onclick = () => {
+        document.getElementById('product-form').reset();
+        document.getElementById('prod-id').value = '';
+        document.getElementById('product-modal-title').textContent = 'Add Product';
+        document.getElementById('prod-normal-fields').style.display = 'block';
+        document.getElementById('prod-imei-fields').style.display = 'none';
+        openModal('modal-product');
+    };
+    document.getElementById('btn-save-product').onclick = async () => {
+        const id = document.getElementById('prod-id').value;
+        const data = {
+            name: document.getElementById('prod-name').value,
+            category: document.getElementById('prod-category').value,
+            cost_price: parseFloat(document.getElementById('prod-cost').value)||0,
+            price: parseFloat(document.getElementById('prod-price').value)||0,
+            is_imei_tracked: document.getElementById('prod-imei-tracked').checked,
+            quantity: document.getElementById('prod-imei-tracked').checked ? 0 : (parseInt(document.getElementById('prod-qty').value)||0),
+            warranty_months: parseInt(document.getElementById('prod-warranty').value)||12,
+            barcode: document.getElementById('prod-barcode').value
+        };
+        if (!data.name || !data.price) return toast('Name and price required','error');
+        try {
+            const res = await api(id ? `/products/${id}` : '/products', { method: id?'PUT':'POST', body: JSON.stringify(data) });
+            if (!res) return;
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast(id ? 'Product updated' : 'Product added');
+            closeModal('modal-product'); loadInventory();
+        } catch(e) { toast(e.message,'error'); }
+    };
+}
+
+async function editProduct(id) {
+    const p = products.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('prod-id').value = p.id;
+    document.getElementById('prod-name').value = p.name;
+    document.getElementById('prod-category').value = p.category || 'General';
+    document.getElementById('prod-cost').value = p.cost_price;
+    document.getElementById('prod-price').value = p.price;
+    document.getElementById('prod-qty').value = p.quantity;
+    document.getElementById('prod-barcode').value = p.barcode;
+    document.getElementById('prod-imei-tracked').checked = p.is_imei_tracked;
+    document.getElementById('prod-warranty').value = p.warranty_months || 12;
+    document.getElementById('prod-normal-fields').style.display = p.is_imei_tracked ? 'none' : 'block';
+    document.getElementById('prod-imei-fields').style.display = p.is_imei_tracked ? 'block' : 'none';
+    document.getElementById('product-modal-title').textContent = 'Edit Product';
+    openModal('modal-product');
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    try {
+        const res = await api(`/products/${id}`, { method:'DELETE' });
+        if (res && res.ok) { toast('Product deleted'); loadInventory(); }
+    } catch(e) { toast(e.message,'error'); }
+}
+
+// === IMEI MANAGEMENT ===
+async function loadImeiList() {
+    try {
+        const search = document.getElementById('imei-search').value;
+        const status = document.getElementById('imei-status-filter').value;
+        let url = '/imei?';
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (status) url += `status=${encodeURIComponent(status)}`;
+        const res = await api(url);
+        if (!res) return;
+        const items = await res.json();
+        const tb = document.querySelector('#imei-table tbody');
+        tb.innerHTML = items.map(i => `<tr>
+            <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code></td>
+            <td>${i.product_name}</td>
+            <td>${statusBadge(i.status)}</td>
+            <td>${i.customer_name||'-'}<br><small style="color:var(--text-muted)">${i.customer_phone||''}</small></td>
+            <td>${i.warranty_expiry_date ? formatDate(i.warranty_expiry_date) : '-'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="viewImeiDetail('${i.id}')"><i class='bx bx-show'></i></button>
+                ${i.status!=='Sold'?`<button class="btn btn-sm btn-danger" onclick="deleteImei('${i.id}')"><i class='bx bx-trash'></i></button>`:''}</td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No IMEI items found</td></tr>';
+    } catch(e) { console.error(e); }
+}
+
+// Search/filter listeners
+document.getElementById('imei-search').addEventListener('input', debounce(loadImeiList, 400));
+document.getElementById('imei-status-filter').addEventListener('change', loadImeiList);
+
+function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), ms); }; }
+
+function setupImeiModal() {
+    document.getElementById('btn-add-imei').onclick = async () => {
+        const res = await api('/products?lite=true');
+        if (!res) return;
+        const prods = await res.json();
+        const tracked = prods.filter(p => p.is_imei_tracked);
+        const sel = document.getElementById('imei-product');
+        sel.innerHTML = tracked.map(p => `<option value="${p.id}" data-cost="${p.cost_price}" data-price="${p.price}" data-warranty="${p.warranty_months}">${p.name}</option>`).join('');
+        if (!tracked.length) { toast('No IMEI-tracked products. Add a product first.','error'); return; }
+        sel.onchange = () => {
+            const opt = sel.selectedOptions[0];
+            document.getElementById('imei-purchase-price').value = opt.dataset.cost;
+            document.getElementById('imei-selling-price').value = opt.dataset.price;
+            document.getElementById('imei-warranty').value = opt.dataset.warranty || 12;
+        };
+        sel.dispatchEvent(new Event('change'));
+        document.getElementById('imei-numbers').value = '';
+        openModal('modal-imei');
+    };
+    document.getElementById('btn-save-imei').onclick = async () => {
+        const nums = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
+        if (!nums.length) return toast('Enter at least one IMEI','error');
+        const data = {
+            product_id: document.getElementById('imei-product').value,
+            imei_numbers: nums,
+            purchase_price: parseFloat(document.getElementById('imei-purchase-price').value)||0,
+            selling_price: parseFloat(document.getElementById('imei-selling-price').value)||0,
+            warranty_months: parseInt(document.getElementById('imei-warranty').value)||12
+        };
+        try {
+            const res = await api('/imei', { method:'POST', body: JSON.stringify(data) });
+            if (!res) return;
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast(`${d.added} IMEI items added`);
+            if (d.errors && d.errors.length) toast(d.errors.join(', '),'error');
+            closeModal('modal-imei'); loadImeiList();
+        } catch(e) { toast(e.message,'error'); }
+    };
+}
+
+async function viewImeiDetail(id) {
+    try {
+        const res = await api('/imei');
+        if (!res) return;
+        const items = await res.json();
+        const item = items.find(i => i.id === id);
+        if (!item) return toast('Item not found','error');
+        const isWarrantyValid = item.warranty_expiry_date && new Date(item.warranty_expiry_date) > new Date();
+        const body = document.getElementById('imei-detail-body');
+        body.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+                <div><label style="font-size:12px;color:var(--text-muted)">IMEI Number</label><p style="font-weight:700;font-family:monospace;font-size:15px">${item.imei_number}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Product</label><p style="font-weight:600">${item.product_name}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Status</label><p>${statusBadge(item.status)}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Warranty</label><p>${isWarrantyValid?'<span class="badge badge-green">Active</span>':'<span class="badge badge-red">Expired</span>'} ${item.warranty_months}m</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Purchase Price</label><p>Rs. ${(item.purchase_price||0).toLocaleString()}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Selling Price</label><p>Rs. ${(item.selling_price||0).toLocaleString()}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Received</label><p>${formatDate(item.received_date)}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Sold Date</label><p>${item.sold_date?formatDate(item.sold_date):'-'}</p></div>
+            </div>
+            ${item.customer_name ? `<div style="background:var(--secondary);border-radius:10px;padding:16px;margin-bottom:20px">
+                <h4 style="font-size:13px;color:var(--text-muted);margin-bottom:10px"><i class='bx bx-user'></i> Customer</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+                    <div><strong>Name:</strong> ${item.customer_name}</div><div><strong>Phone:</strong> ${item.customer_phone}</div>
+                    <div><strong>NIC:</strong> ${item.customer_nic||'-'}</div><div><strong>Email:</strong> ${item.customer_email||'-'}</div>
+                    <div style="grid-column:span 2"><strong>Address:</strong> ${item.customer_address||'-'}</div>
+                </div>
+            </div>` : ''}
+            <h4 style="font-size:14px;margin-bottom:12px"><i class='bx bx-history'></i> Status History</h4>
+            <div class="timeline">${(item.status_history||[]).map(h => `
+                <div class="timeline-item"><div class="timeline-date">${new Date(h.date).toLocaleString()}</div>
+                <div class="timeline-status">${h.status}</div>
+                <div class="timeline-note">${h.notes||''}</div>
+                <div class="timeline-by">by ${h.changed_by||'System'}</div></div>`).join('')}
+            </div>`;
+        const foot = document.getElementById('imei-detail-foot');
+        foot.innerHTML = item.status !== 'In Stock' ? `<button class="btn btn-warning" onclick="openStatusModal('${item.id}')"><i class='bx bx-refresh'></i> Change Status</button>` : '';
+        openModal('modal-imei-detail');
+    } catch(e) { console.error(e); }
+}
+
+async function deleteImei(id) {
+    if (!confirm('Delete this IMEI item?')) return;
+    try {
+        const res = await api(`/imei/${id}`, { method:'DELETE' });
+        if (res&&res.ok) { toast('IMEI deleted'); loadImeiList(); }
+    } catch(e) { toast(e.message,'error'); }
+}
+
+// === STATUS CHANGE ===
+function setupStatusModal() {
+    document.getElementById('btn-save-status').onclick = async () => {
+        const id = document.getElementById('status-imei-id').value;
+        const data = {
+            status: document.getElementById('status-new').value,
+            notes: document.getElementById('status-notes').value,
+            send_email: document.getElementById('status-send-email').checked
+        };
+        try {
+            const res = await api(`/imei/${id}/status`, { method:'PUT', body: JSON.stringify(data) });
+            if (!res) return;
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast('Status updated'); closeModal('modal-status'); closeModal('modal-imei-detail');
+            loadImeiList();
+        } catch(e) { toast(e.message,'error'); }
+    };
+}
+
+function openStatusModal(id) {
+    document.getElementById('status-imei-id').value = id;
+    document.getElementById('status-notes').value = '';
+    document.getElementById('status-send-email').checked = true;
+    openModal('modal-status');
+}
