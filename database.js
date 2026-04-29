@@ -90,8 +90,7 @@ const ImeiItemSchema = new mongoose.Schema({
     status_history: [StatusHistorySchema]
 });
 
-// Index for fast IMEI lookups
-ImeiItemSchema.index({ imei_number: 1 });
+// Index for fast lookups
 ImeiItemSchema.index({ status: 1 });
 ImeiItemSchema.index({ customer_nic: 1 });
 ImeiItemSchema.index({ customer_phone: 1 });
