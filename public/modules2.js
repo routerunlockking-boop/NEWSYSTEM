@@ -196,8 +196,8 @@ function printReceipt(inv) {
         <div style="width:100%;max-width:80mm;">
             <div style="text-align:center;margin-bottom:12px;">
                 <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">SmartZone</h1>
-                <p style="margin:2px 0;font-size:11px;font-weight:500;">123 Main Street, Colombo 06</p>
-                <p style="margin:0;font-size:11px;font-weight:500;">Hotline: 011-2345678</p>
+                <p style="margin:2px 0;font-size:11px;font-weight:500;">New Town Padaviya, Anuradhapura</p>
+                <p style="margin:0;font-size:11px;font-weight:500;">Mobile: 078-68000 86</p>
                 <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
                 <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">Tax Invoice</h2>
             </div>
@@ -256,7 +256,7 @@ function printReceipt(inv) {
             <div style="text-align:center;font-size:10px;margin-top:12px;">
                 <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">Thank You! Come Again</p>
                 <p style="margin:0 0 8px 0;line-height:1.3;">Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.</p>
-                <p style="margin:0;font-size:9px;font-family:monospace;color:#555;">Powered by SmartZone</p>
+                <p style="margin:0;font-size:10px;font-family:monospace;color:#555;">Powered by SmartZone</p>
             </div>
         </div>
     `;
