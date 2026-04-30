@@ -176,18 +176,99 @@ async function submitBill() {
 
 function printReceipt(inv) {
     const pa = document.getElementById('print-area');
-    pa.innerHTML = `<div style="font-family:monospace;width:80mm;padding:10px">
-        <div style="text-align:center"><h2 style="margin:0">SMART ZONE</h2><p style="font-size:12px">info@smartzonelk.lk</p><hr></div>
-        <p><strong>${inv.invoice_number}</strong><br>${inv.date} ${inv.time}</p>
-        ${inv.customer_name?`<p>Customer: ${inv.customer_name}</p>`:''}
-        <table style="width:100%;border-collapse:collapse;margin:10px 0">
-            <tr style="border-bottom:1px solid #000"><th style="text-align:left">Item</th><th>Qty</th><th style="text-align:right">Total</th></tr>
-            ${inv.items.map(i=>`<tr><td>${i.product_name}${i.imei_number?`<br><small>IMEI: ${i.imei_number}</small>`:''}</td><td style="text-align:center">${i.quantity}</td><td style="text-align:right">${i.subtotal.toLocaleString()}</td></tr>`).join('')}
-        </table>
-        <hr><div style="display:flex;justify-content:space-between;font-size:18px;font-weight:900"><span>TOTAL</span><span>Rs. ${inv.total_amount.toLocaleString()}</span></div>
-        <div style="text-align:center;margin-top:15px;font-size:11px"><p>Thank you for your purchase!</p></div></div>`;
+    
+    // Calculate balance
+    const paid = inv.amount_paid || 0;
+    const balance = paid > 0 ? (paid - inv.total_amount) : 0;
+
+    let itemsHtml = inv.items.map(i => `
+        <div style="margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <span style="width:55%;word-break:break-word;padding-right:4px">${i.product_name}</span>
+                <span style="width:15%;text-align:center">${i.quantity}</span>
+                <span style="width:30%;text-align:right">${i.subtotal.toFixed(2)}</span>
+            </div>
+            ${i.imei_number ? `<div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: ${i.imei_number}</div>` : ''}
+        </div>
+    `).join('');
+
+    pa.innerHTML = `
+        <div style="width:100%;max-width:80mm;">
+            <div style="text-align:center;margin-bottom:12px;">
+                <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">SmartZone</h1>
+                <p style="margin:2px 0;font-size:11px;font-weight:500;">123 Main Street, Colombo 06</p>
+                <p style="margin:0;font-size:11px;font-weight:500;">Hotline: 011-2345678</p>
+                <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">Tax Invoice</h2>
+            </div>
+            
+            <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>Bill No: ${inv.invoice_number}</span>
+                    <span>${inv.date}</span>
+                </div>
+                ${inv.customer_name ? `
+                <div style="margin-top:6px;">
+                    <div style="font-weight:700;">Customer: ${inv.customer_name}</div>
+                    ${inv.customer_phone ? `<div>Tel: ${inv.customer_phone}</div>` : ''}
+                </div>` : ''}
+            </div>
+            
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                <span style="width:55%;text-align:left">Item</span>
+                <span style="width:15%;text-align:center">Qty</span>
+                <span style="width:30%;text-align:right">Amount</span>
+            </div>
+            
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            
+            <div style="font-size:11px;margin-bottom:10px;">
+                ${itemsHtml}
+            </div>
+            
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            
+            <div style="font-size:12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>Subtotal</span>
+                    <span>${inv.total_amount.toFixed(2)}</span>
+                </div>
+                <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
+                    <span>TOTAL</span>
+                    <span>${inv.total_amount.toFixed(2)}</span>
+                </div>
+                <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
+                    <span>Amount Paid</span>
+                    <span>${paid.toFixed(2)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
+                    <span>Balance</span>
+                    <span>${balance.toFixed(2)}</span>
+                </div>
+            </div>
+            
+            <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+            
+            <div style="text-align:center;font-size:10px;margin-top:12px;">
+                <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">Thank You! Come Again</p>
+                <p style="margin:0 0 8px 0;line-height:1.3;">Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.</p>
+                <p style="margin:0;font-size:9px;font-family:monospace;color:#555;">Powered by SmartZone</p>
+            </div>
+        </div>
+    `;
     pa.style.display = 'block';
-    setTimeout(() => { window.print(); pa.style.display = 'none'; }, 300);
+    
+    // window.print blocks the thread. Once the print dialog closes, we hide the area and refocus scanner.
+    setTimeout(() => { 
+        window.print(); 
+        pa.style.display = 'none'; 
+        const scanInput = document.getElementById('pos-scan');
+        if (scanInput) scanInput.focus();
+    }, 300);
 }
 
 // === WARRANTY ===
