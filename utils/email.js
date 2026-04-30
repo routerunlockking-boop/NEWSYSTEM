@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     secure: false,
     auth: {
         user: process.env.SMTP_USER || 'info@smartzonelk.lk',
-        pass: process.env.SMTP_PASS || 'your-app-password'
+        pass: process.env.SMTP_PASS || 'Smart12345@'
     }
 });
 
