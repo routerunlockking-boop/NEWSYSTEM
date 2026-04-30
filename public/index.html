@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="toast-container" id="toast-container"></div>
@@ -90,8 +91,11 @@
                     <div class="pos-search-bar">
                         <div class="scanner-input" style="flex:1.2">
                             <i class='bx bx-barcode'></i>
-                            <input type="text" id="pos-scan" class="form-control" placeholder="Scan IMEI / barcode... (auto-detect)" autocomplete="off">
+                            <input type="text" id="pos-scan" class="form-control" placeholder="Scan IMEI / barcode..." autocomplete="off">
                         </div>
+                        <button class="btn btn-success btn-sm" id="btn-camera-scan-pos" title="Scan with Camera" onclick="openCameraScanner('pos')">
+                            <i class='bx bx-camera' style="font-size:18px"></i>
+                        </button>
                         <button class="btn btn-primary btn-sm" id="btn-scan-mode" title="Toggle Scan Mode">
                             <i class='bx bx-broadcast'></i> Scan
                         </button>
@@ -178,7 +182,10 @@
         <section id="warranty-view" class="view">
             <div class="view-head"><h2>Warranty Lookup</h2></div>
             <div style="max-width:600px;margin:0 auto 24px">
-                <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="warranty-scan" class="form-control" placeholder="Scan or enter IMEI number..." style="font-size:15px;padding:13px 13px 13px 44px" autocomplete="off"></div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <div class="scanner-input" style="flex:1"><i class='bx bx-barcode'></i><input type="text" id="warranty-scan" class="form-control" placeholder="Scan or enter IMEI number..." style="font-size:15px;padding:13px 13px 13px 44px" autocomplete="off"></div>
+                    <button class="btn btn-success btn-lg" onclick="openCameraScanner('warranty')" title="Scan with Camera"><i class='bx bx-camera' style="font-size:22px"></i></button>
+                </div>
                 <button class="btn btn-primary btn-block btn-lg" id="btn-warranty-lookup" style="margin-top:10px"><i class='bx bx-search'></i> Lookup Warranty</button>
             </div>
             <div id="warranty-result" style="display:none"></div>
@@ -279,6 +286,7 @@
         <label><i class='bx bx-barcode' style="color:var(--primary)"></i> Scan or Type IMEI</label>
         <div class="imei-scan-row">
             <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="imei-scan-input" class="form-control" placeholder="Scan barcode or type IMEI... (Enter to add)" autocomplete="off"></div>
+            <button class="btn btn-success btn-sm" onclick="openCameraScanner('imei-stock')" title="Scan with Camera" style="flex-shrink:0"><i class='bx bx-camera' style="font-size:18px"></i></button>
             <span class="imei-scan-count" id="imei-scan-count">0 scanned</span>
         </div>
     </div>
@@ -334,6 +342,21 @@
     <div class="form-group"><label><input type="checkbox" id="status-send-email"> Send email notification to customer</label></div>
 </div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-status')">Cancel</button><button class="btn btn-primary" id="btn-save-status">Update Status</button></div>
+</div></div>
+
+<!-- Camera Scanner Modal -->
+<div class="modal-bg" id="modal-camera-scanner"><div class="modal" style="max-width:480px">
+    <div class="modal-head">
+        <h3><i class='bx bx-camera' style="color:var(--primary)"></i> Camera Scanner</h3>
+        <button class="close-btn" onclick="closeCameraScanner()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:0;overflow:hidden">
+        <div id="camera-scanner-region" style="width:100%"></div>
+        <div id="camera-scan-result" style="padding:14px;text-align:center;font-size:13px;color:var(--text-muted)">Point camera at barcode...</div>
+    </div>
+    <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeCameraScanner()">Close</button>
+    </div>
 </div></div>
 
 <!-- Print Area -->

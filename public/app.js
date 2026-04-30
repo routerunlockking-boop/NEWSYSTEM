@@ -160,6 +160,90 @@ function focusScanField() {
     setTimeout(() => { const el = document.getElementById('pos-scan'); if(el) el.focus(); }, 100);
 }
 
+// === CAMERA BARCODE SCANNER ===
+let html5QrScanner = null;
+let cameraScanTarget = ''; // 'pos', 'warranty', 'imei-stock'
+
+function openCameraScanner(target) {
+    cameraScanTarget = target;
+    openModal('modal-camera-scanner');
+    document.getElementById('camera-scan-result').textContent = 'Starting camera...';
+    document.getElementById('camera-scan-result').style.color = 'var(--text-muted)';
+
+    setTimeout(() => {
+        if (html5QrScanner) {
+            try { html5QrScanner.clear(); } catch(e) {}
+        }
+        html5QrScanner = new Html5QrcodeScanner("camera-scanner-region", {
+            fps: 15,
+            qrbox: { width: 280, height: 120 },
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.CODABAR,
+                Html5QrcodeSupportedFormats.QR_CODE
+            ]
+        }, false);
+
+        html5QrScanner.render(onCameraScanSuccess, onCameraScanFailure);
+        document.getElementById('camera-scan-result').textContent = 'Point camera at barcode...';
+    }, 400);
+}
+
+function onCameraScanSuccess(decodedText) {
+    const barcode = sanitizeBarcode(decodedText);
+    if (!barcode) return;
+
+    // Show scanned result
+    const resultEl = document.getElementById('camera-scan-result');
+    resultEl.innerHTML = `<span style="color:var(--success);font-weight:700"><i class='bx bx-check-circle'></i> Scanned: ${barcode}</span>`;
+
+    // Route to the right target
+    if (cameraScanTarget === 'pos') {
+        // Set the value in POS scan field and trigger Enter
+        const scanField = document.getElementById('pos-scan');
+        scanField.value = barcode;
+        scanField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    } else if (cameraScanTarget === 'warranty') {
+        document.getElementById('warranty-scan').value = barcode;
+        document.getElementById('btn-warranty-lookup').click();
+    } else if (cameraScanTarget === 'imei-stock') {
+        const scanField = document.getElementById('imei-scan-input');
+        scanField.value = barcode;
+        scanField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
+
+    toast(`Scanned: ${barcode}`, 'scan');
+
+    // Close after short delay so user sees the result
+    setTimeout(() => closeCameraScanner(), 800);
+}
+
+function onCameraScanFailure(error) {
+    // Ignore — continuous scanning errors are expected until a barcode is found
+}
+
+function closeCameraScanner() {
+    if (html5QrScanner) {
+        try { html5QrScanner.clear(); } catch(e) {}
+        html5QrScanner = null;
+    }
+    closeModal('modal-camera-scanner');
+    // Refocus the right field after closing
+    if (cameraScanTarget === 'pos') focusScanField();
+    else if (cameraScanTarget === 'imei-stock') {
+        setTimeout(() => document.getElementById('imei-scan-input')?.focus(), 200);
+    }
+}
+
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);

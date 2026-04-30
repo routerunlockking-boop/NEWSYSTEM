@@ -394,3 +394,58 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     background:var(--primary-light); padding:6px 12px; border-radius:20px;
     white-space:nowrap;
 }
+
+/* ===== CAMERA SCANNER ===== */
+#camera-scanner-region {
+    min-height: 280px;
+    background: #000;
+}
+#camera-scanner-region video {
+    border-radius: 0 !important;
+}
+/* Override html5-qrcode default styles */
+#camera-scanner-region #html5-qrcode-button-camera-permission,
+#camera-scanner-region button {
+    background: var(--primary) !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    margin: 10px auto !important;
+}
+#camera-scanner-region select {
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border) !important;
+    font-size: 13px !important;
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    width: 100% !important;
+    margin: 8px 0 !important;
+}
+#camera-scanner-region img[alt="Info icon"] {
+    display: none !important;
+}
+#html5-qrcode-anchor-scan-type-change {
+    color: var(--primary) !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    display: none !important;
+}
+#camera-scan-result {
+    border-top: 1px solid var(--border);
+}
+
+/* Camera scan button pulse on mobile */
+@media (max-width: 768px) {
+    .btn-success[onclick*="openCameraScanner"] {
+        animation: cameraPulse 2s infinite;
+    }
+    @keyframes cameraPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+    }
+}
