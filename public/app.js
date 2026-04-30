@@ -206,19 +206,17 @@ function onCameraScanSuccess(decodedText) {
     const resultEl = document.getElementById('camera-scan-result');
     resultEl.innerHTML = `<span style="color:var(--success);font-weight:700"><i class='bx bx-check-circle'></i> Scanned: ${barcode}</span>`;
 
-    // Route to the right target
+    // Route to the right target using direct function calls
     if (cameraScanTarget === 'pos') {
-        // Set the value in POS scan field and trigger Enter
-        const scanField = document.getElementById('pos-scan');
-        scanField.value = barcode;
-        scanField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        handlePosScan(barcode);
     } else if (cameraScanTarget === 'warranty') {
         document.getElementById('warranty-scan').value = barcode;
         document.getElementById('btn-warranty-lookup').click();
     } else if (cameraScanTarget === 'imei-stock') {
-        const scanField = document.getElementById('imei-scan-input');
-        scanField.value = barcode;
-        scanField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        handleImeiStockScan(barcode);
+    } else if (cameraScanTarget === 'imei-tracker') {
+        document.getElementById('imei-search').value = barcode;
+        loadImeiList();
     }
 
     toast(`Scanned: ${barcode}`, 'scan');
@@ -241,6 +239,8 @@ function closeCameraScanner() {
     if (cameraScanTarget === 'pos') focusScanField();
     else if (cameraScanTarget === 'imei-stock') {
         setTimeout(() => document.getElementById('imei-scan-input')?.focus(), 200);
+    } else if (cameraScanTarget === 'imei-tracker') {
+        setTimeout(() => document.getElementById('imei-search')?.focus(), 200);
     }
 }
 

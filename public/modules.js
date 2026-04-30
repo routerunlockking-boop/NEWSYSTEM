@@ -135,6 +135,38 @@ function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = 
 // ===== IMEI STOCK RECEIVING WITH SCANNER =====
 let scannedImeiQueue = [];
 
+// Shared handler — called from keyboard Enter AND camera scanner
+async function handleImeiStockScan(rawValue) {
+    const imei = sanitizeBarcode(rawValue);
+    if (!imei) return;
+
+    // Check duplicate in current queue
+    if (scannedImeiQueue.includes(imei)) {
+        toast(`Duplicate in queue: ${imei}`, 'error');
+        addToScannedQueueUI(imei, true, 'Already in queue');
+        return;
+    }
+
+    // Quick duplicate check against DB
+    try {
+        const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
+        if (res && res.ok) {
+            toast(`IMEI already exists in database: ${imei}`, 'error');
+            addToScannedQueueUI(imei, true, 'Exists in DB');
+            return;
+        }
+    } catch(ex) {}
+
+    // Add to queue
+    scannedImeiQueue.push(imei);
+    addToScannedQueueUI(imei, false);
+    updateScanCount();
+    toast(`IMEI scanned: ${imei}`, 'scan');
+
+    // Auto-focus back for next scan
+    document.getElementById('imei-scan-input')?.focus();
+}
+
 function setupImeiModal() {
     const scanInput = document.getElementById('imei-scan-input');
 
@@ -143,35 +175,8 @@ function setupImeiModal() {
         if (e.key !== 'Enter') return;
         e.preventDefault();
         const raw = scanInput.value;
-        const imei = sanitizeBarcode(raw);
         scanInput.value = '';
-        if (!imei) return;
-
-        // Check duplicate in current queue
-        if (scannedImeiQueue.includes(imei)) {
-            toast(`Duplicate in queue: ${imei}`, 'error');
-            addToScannedQueueUI(imei, true, 'Already in queue');
-            return;
-        }
-
-        // Quick duplicate check against DB
-        try {
-            const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
-            if (res && res.ok) {
-                toast(`IMEI already exists in database: ${imei}`, 'error');
-                addToScannedQueueUI(imei, true, 'Exists in DB');
-                return;
-            }
-        } catch(ex) {}
-
-        // Add to queue
-        scannedImeiQueue.push(imei);
-        addToScannedQueueUI(imei, false);
-        updateScanCount();
-        toast(`IMEI scanned: ${imei}`, 'scan');
-
-        // Auto-focus back for next scan
-        scanInput.focus();
+        await handleImeiStockScan(raw);
     });
 
     document.getElementById('btn-add-imei').onclick = async () => {

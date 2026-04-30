@@ -1,26 +1,33 @@
 // === POS ===
+// Shared scan handler — called from keyboard Enter AND camera scanner
+async function handlePosScan(val) {
+    if (!val) return;
+    // Try IMEI lookup first
+    try {
+        const res = await api(`/imei/lookup/${encodeURIComponent(val)}`);
+        if (res && res.ok) {
+            const item = await res.json();
+            if (item.status !== 'In Stock') { toast(`IMEI ${val} is ${item.status}`, 'error'); return; }
+            addImeiToBill(item);
+            focusScanField();
+            return;
+        }
+    } catch(ex) {}
+    // Try barcode
+    const prod = products.find(p => p.barcode === val);
+    if (prod && !prod.is_imei_tracked) { addToBill(prod); toast(`Added: ${prod.name}`); }
+    else if (prod && prod.is_imei_tracked) { toast('IMEI product - scan individual IMEI number', 'error'); }
+    else { toast(`Not found: ${val}`, 'error'); }
+    focusScanField();
+}
+
 function setupPOS() {
     document.getElementById('pos-scan').addEventListener('keydown', async e => {
         if (e.key !== 'Enter') return;
         e.preventDefault();
         const val = e.target.value.trim();
-        if (!val) return;
         e.target.value = '';
-        // Try IMEI lookup first
-        try {
-            const res = await api(`/imei/lookup/${encodeURIComponent(val)}`);
-            if (res && res.ok) {
-                const item = await res.json();
-                if (item.status !== 'In Stock') { toast(`IMEI ${val} is ${item.status}`, 'error'); return; }
-                addImeiToBill(item);
-                return;
-            }
-        } catch(ex) {}
-        // Try barcode
-        const prod = products.find(p => p.barcode === val);
-        if (prod && !prod.is_imei_tracked) { addToBill(prod); toast(`Added: ${prod.name}`); }
-        else if (prod && prod.is_imei_tracked) { toast('IMEI product - scan individual IMEI number', 'error'); }
-        else { toast(`Not found: ${val}`, 'error'); }
+        await handlePosScan(val);
     });
     document.getElementById('pos-search').addEventListener('input', e => {
         const q = e.target.value.toLowerCase();
