@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Invoice, Product, ImeiItem } = require('../database');
+const { Invoice, Product, ImeiItem, Customer } = require('../database');
 
 // Get invoices
 router.get('/', async (req, res) => {
@@ -101,6 +101,25 @@ router.post('/', async (req, res) => {
             total_amount: parsedTotal, amount_paid: parsedPaid,
             total_profit, items: formattedItems
         });
+
+        // Save or update customer
+        if (customer_name && customer_phone) {
+            let customer = await Customer.findOne({ user_id: req.user._id, phone: customer_phone });
+            if (!customer) {
+                await Customer.create({
+                    user_id: req.user._id,
+                    name: customer_name,
+                    phone: customer_phone,
+                    address: customer_address || '',
+                    nic_number: customer_nic || ''
+                });
+            } else {
+                customer.name = customer_name;
+                if (customer_address) customer.address = customer_address;
+                if (customer_nic) customer.nic_number = customer_nic;
+                await customer.save();
+            }
+        }
 
         // Update normal product stock
         for (const item of items) {

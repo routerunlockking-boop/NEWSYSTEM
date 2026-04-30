@@ -35,6 +35,29 @@ function setupPOS() {
     });
     document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
     document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
+    
+    // Handle customer selection in POS
+    document.getElementById('pos-cust-select')?.addEventListener('change', function() {
+        if (!this.value) {
+            document.getElementById('pos-cust-name').value = '';
+            document.getElementById('pos-cust-phone').value = '';
+            document.getElementById('pos-cust-nic').value = '';
+            document.getElementById('pos-cust-email').value = '';
+            document.getElementById('pos-cust-address').value = '';
+            return;
+        }
+        const c = customers.find(x => x.id === this.value);
+        if (c) {
+            document.getElementById('pos-cust-name').value = c.name;
+            document.getElementById('pos-cust-phone').value = c.phone;
+            document.getElementById('pos-cust-nic').value = c.nic_number || '';
+            document.getElementById('pos-cust-email').value = c.email || '';
+            document.getElementById('pos-cust-address').value = c.address || '';
+        }
+    });
+
+    // Load customers for the dropdown
+    loadCustomers();
 }
 
 async function loadPOS() {
@@ -139,6 +162,7 @@ async function submitBill() {
         printReceipt(d.invoice);
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         document.getElementById('pos-customer-box').style.display = 'none';
+        document.getElementById('pos-cust-select').value = '';
         document.getElementById('pos-paid').value = '';
         document.getElementById('pos-cust-name').value = '';
         document.getElementById('pos-cust-phone').value = '';
@@ -146,6 +170,7 @@ async function submitBill() {
         document.getElementById('pos-cust-email').value = '';
         document.getElementById('pos-cust-address').value = '';
         renderBill(); loadPOS();
+        loadCustomers(); // Reload customers to show any newly added one
     } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -231,13 +256,22 @@ async function loadCustomers() {
         const res = await api(`/customers?search=${encodeURIComponent(search)}`);
         if (!res) return;
         customers = await res.json();
+        
         const tb = document.querySelector('#cust-table tbody');
-        tb.innerHTML = customers.map(c => `<tr>
-            <td><strong>${c.name}</strong></td><td>${c.phone}</td><td>${c.nic_number||'-'}</td>
-            <td>${c.email||'-'}</td><td>${c.address||'-'}</td>
-            <td><button class="btn btn-sm btn-outline" onclick="editCustomer('${c.id}')"><i class='bx bx-edit'></i></button>
-                <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')"><i class='bx bx-trash'></i></button></td>
-        </tr>`).join('');
+        if (tb) {
+            tb.innerHTML = customers.map(c => `<tr>
+                <td><strong>${c.name}</strong></td><td>${c.phone}</td><td>${c.nic_number||'-'}</td>
+                <td>${c.email||'-'}</td><td>${c.address||'-'}</td>
+                <td><button class="btn btn-sm btn-outline" onclick="editCustomer('${c.id}')"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')"><i class='bx bx-trash'></i></button></td>
+            </tr>`).join('');
+        }
+        
+        const sel = document.getElementById('pos-cust-select');
+        if (sel) {
+            sel.innerHTML = '<option value="">+ New Customer (Type below)</option>' + 
+                customers.map(c => `<option value="${c.id}">${c.name} - ${c.phone}</option>`).join('');
+        }
     } catch(e) { console.error(e); }
 }
 
