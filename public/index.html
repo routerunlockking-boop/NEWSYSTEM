@@ -44,7 +44,6 @@
         <li><a href="#" class="nav-link" data-target="pos-view" data-title="New Bill"><i class='bx bx-cart'></i><span>New Bill</span></a></li>
         <li><a href="#" class="nav-link" data-target="inventory-view" data-title="Inventory"><i class='bx bx-box'></i><span>Inventory</span></a></li>
         <li><a href="#" class="nav-link" data-target="imei-view" data-title="IMEI Management"><i class='bx bx-chip'></i><span>IMEI Tracker</span></a></li>
-        <li><a href="#" class="nav-link" data-target="stockin-view" data-title="Receive Stock"><i class='bx bx-import'></i><span>Stock In</span></a></li>
         <li><a href="#" class="nav-link" data-target="warranty-view" data-title="Warranty"><i class='bx bx-shield-quarter'></i><span>Warranty</span></a></li>
         <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
         <li><a href="#" class="nav-link" data-target="invoices-view" data-title="Invoices"><i class='bx bx-receipt'></i><span>Invoices</span></a></li>
@@ -178,81 +177,6 @@
             <div class="table-card"><div class="table-responsive">
                 <table class="data-table" id="imei-table"><thead><tr><th>IMEI</th><th>Product</th><th>Status</th><th>Customer</th><th>Warranty</th><th>Actions</th></tr></thead><tbody></tbody></table>
             </div></div>
-        </section>
-
-        <!-- STOCK IN (Receive IMEI Stock) -->
-        <section id="stockin-view" class="view">
-            <div class="stockin-layout">
-                <!-- TOP: Scan Zone -->
-                <div class="stockin-scan-zone" id="stockin-scan-zone">
-                    <div class="stockin-scan-header">
-                        <div><h2 style="font-size:20px;font-weight:800;margin-bottom:2px"><i class='bx bx-import' style="color:var(--primary)"></i> Receive IMEI Stock</h2>
-                        <p style="font-size:12px;color:var(--text-muted)">Scan router barcodes to add them into inventory</p></div>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <span class="stockin-count" id="stockin-count">0 items</span>
-                            <button class="btn btn-success btn-sm" onclick="openCameraScanner('stockin')" title="Scan with Camera"><i class='bx bx-camera' style='font-size:18px'></i></button>
-                            <button class="btn btn-primary btn-sm" id="btn-stockin-focus" title="Lock Focus"><i class='bx bx-target-lock'></i> Focus</button>
-                        </div>
-                    </div>
-                    <!-- Product + Config Row -->
-                    <div class="stockin-config">
-                        <div class="form-group" style="margin-bottom:0;flex:1.5">
-                            <label>Product Model *</label>
-                            <select id="stockin-product" class="form-control"></select>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;flex:0.7">
-                            <label>Purchase Price</label>
-                            <input type="number" id="stockin-cost" class="form-control" step="0.01" placeholder="0.00">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;flex:0.7">
-                            <label>Selling Price</label>
-                            <input type="number" id="stockin-price" class="form-control" step="0.01" placeholder="0.00">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;flex:0.5">
-                            <label>Warranty</label>
-                            <select id="stockin-warranty" class="form-control">
-                                <option value="6">6 months</option>
-                                <option value="12" selected>12 months</option>
-                                <option value="18">18 months</option>
-                                <option value="24">24 months</option>
-                                <option value="36">36 months</option>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- THE BIG SCAN INPUT -->
-                    <div class="stockin-scan-input-wrap" id="stockin-scan-wrap">
-                        <i class='bx bx-barcode'></i>
-                        <input type="text" id="stockin-scan" class="stockin-scan-input" placeholder="Scan barcode or type IMEI here..." autocomplete="off" inputmode="numeric">
-                        <div class="stockin-scan-status" id="stockin-scan-status">Ready to scan</div>
-                    </div>
-                </div>
-
-                <!-- BOTTOM: Scanned Items Table -->
-                <div class="stockin-items-wrap">
-                    <div class="table-card" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-                        <div class="card-head" style="flex-shrink:0">
-                            <h2><i class='bx bx-list-check'></i> Scanned Items</h2>
-                            <div style="display:flex;gap:8px;align-items:center">
-                                <span style="font-size:12px;color:var(--text-muted)" id="stockin-batch-info">No items yet</span>
-                                <button class="btn btn-outline btn-sm" id="btn-stockin-clear" style="display:none"><i class='bx bx-trash'></i> Clear All</button>
-                            </div>
-                        </div>
-                        <div class="table-responsive" style="flex:1;overflow-y:auto">
-                            <table class="data-table" id="stockin-table">
-                                <thead><tr><th>#</th><th>IMEI Number</th><th>Product</th><th>Price</th><th>Warranty</th><th style="width:50px"></th></tr></thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                        <div class="stockin-footer" id="stockin-footer" style="display:none">
-                            <div style="flex:1">
-                                <strong id="stockin-total-label">0 items ready</strong>
-                                <span style="font-size:12px;color:var(--text-muted);margin-left:8px">Press Escape to cancel</span>
-                            </div>
-                            <button class="btn btn-primary btn-lg" id="btn-stockin-save"><i class='bx bx-check-circle'></i> Save All to Stock</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </section>
 
         <!-- WARRANTY -->

@@ -169,14 +169,18 @@ async function handleImeiStockScan(rawValue) {
 
 function setupImeiModal() {
     const scanInput = document.getElementById('imei-scan-input');
+    const form = document.getElementById('imei-form');
+    if (form) form.addEventListener('submit', e => e.preventDefault());
 
     // Scanner input handler — works with both keyboard typing and barcode scanner
     scanInput.addEventListener('keydown', async (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const raw = scanInput.value;
-        scanInput.value = '';
-        await handleImeiStockScan(raw);
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            const raw = scanInput.value;
+            scanInput.value = '';
+            await handleImeiStockScan(raw);
+        }
     });
 
     document.getElementById('btn-add-imei').onclick = async () => {
