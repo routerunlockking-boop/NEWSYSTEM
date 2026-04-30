@@ -136,35 +136,51 @@ function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = 
 let scannedImeiQueue = [];
 
 // Shared handler — called from keyboard Enter AND camera scanner
+let isProcessingImei = {}; // Prevent rapid concurrent scans of the same IMEI
 async function handleImeiStockScan(rawValue) {
     const imei = sanitizeBarcode(rawValue);
     if (!imei) return;
 
-    // Check duplicate in current queue
-    if (scannedImeiQueue.includes(imei)) {
-        toast(`Duplicate in queue: ${imei}`, 'error');
-        addToScannedQueueUI(imei, true, 'Already in queue');
-        return;
-    }
+    // Prevent race condition if scanner sends same IMEI multiple times instantly
+    if (isProcessingImei[imei]) return;
+    isProcessingImei[imei] = true;
 
-    // Quick duplicate check against DB
     try {
-        const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
-        if (res && res.ok) {
-            toast(`IMEI already exists in database: ${imei}`, 'error');
-            addToScannedQueueUI(imei, true, 'Exists in DB');
+        const bulkText = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
+
+        // Check duplicate in current queue
+        if (scannedImeiQueue.includes(imei) || bulkText.includes(imei)) {
+            toast(`Duplicate in queue: ${imei}`, 'error');
+            addToScannedQueueUI(imei, true, 'Already in queue');
             return;
         }
-    } catch(ex) {}
 
-    // Add to queue
-    scannedImeiQueue.push(imei);
-    addToScannedQueueUI(imei, false);
-    updateScanCount();
-    toast(`IMEI scanned: ${imei}`, 'scan');
+        // Add to queue immediately to block other rapid scans of the same barcode
+        scannedImeiQueue.push(imei);
 
-    // Auto-focus back for next scan
-    document.getElementById('imei-scan-input')?.focus();
+        // Quick duplicate check against DB
+        try {
+            const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
+            if (res && res.ok) {
+                // Oops, it's in the DB. Remove from queue.
+                scannedImeiQueue = scannedImeiQueue.filter(i => i !== imei);
+                toast(`IMEI already exists in database: ${imei}`, 'error');
+                addToScannedQueueUI(imei, true, 'Exists in DB');
+                return;
+            }
+        } catch(ex) {}
+
+        // Success UI update
+        addToScannedQueueUI(imei, false);
+        updateScanCount();
+        toast(`IMEI scanned: ${imei}`, 'scan');
+
+        // Auto-focus back for next scan
+        document.getElementById('imei-scan-input')?.focus();
+    } finally {
+        // Unlock
+        setTimeout(() => { isProcessingImei[imei] = false; }, 1000); // Lock for 1 second to prevent bounce
+    }
 }
 
 function setupImeiModal() {
@@ -208,11 +224,17 @@ function setupImeiModal() {
         setTimeout(() => scanInput.focus(), 300);
     };
 
-    document.getElementById('btn-save-imei').onclick = async () => {
+    document.getElementById('btn-save-imei').onclick = async function() {
+        const btn = this;
         // Merge scanned queue + bulk textarea
         const bulkText = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
         const allImeis = [...new Set([...scannedImeiQueue, ...bulkText])];
         if (!allImeis.length) return toast('Scan or enter at least one IMEI','error');
+
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bx bx-loader bx-spin"></i> Saving...';
+
         const data = {
             product_id: document.getElementById('imei-product').value,
             imei_numbers: allImeis,
@@ -222,13 +244,18 @@ function setupImeiModal() {
         };
         try {
             const res = await api('/imei', { method:'POST', body: JSON.stringify(data) });
-            if (!res) return;
+            if (!res) throw new Error('Network error');
             const d = await res.json();
-            if (!res.ok) throw new Error(d.error);
+            if (!res.ok) throw new Error(d.error || 'Failed to save');
             toast(`${d.added} IMEI items added successfully`);
             if (d.errors && d.errors.length) toast(d.errors.join(', '),'error');
             closeModal('modal-imei'); loadImeiList();
-        } catch(e) { toast(e.message,'error'); }
+        } catch(e) { 
+            toast(e.message,'error'); 
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
     };
 }
 
