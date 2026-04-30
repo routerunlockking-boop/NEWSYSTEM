@@ -132,7 +132,48 @@ document.getElementById('imei-status-filter').addEventListener('change', loadIme
 
 function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), ms); }; }
 
+// ===== IMEI STOCK RECEIVING WITH SCANNER =====
+let scannedImeiQueue = [];
+
 function setupImeiModal() {
+    const scanInput = document.getElementById('imei-scan-input');
+
+    // Scanner input handler — works with both keyboard typing and barcode scanner
+    scanInput.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const raw = scanInput.value;
+        const imei = sanitizeBarcode(raw);
+        scanInput.value = '';
+        if (!imei) return;
+
+        // Check duplicate in current queue
+        if (scannedImeiQueue.includes(imei)) {
+            toast(`Duplicate in queue: ${imei}`, 'error');
+            addToScannedQueueUI(imei, true, 'Already in queue');
+            return;
+        }
+
+        // Quick duplicate check against DB
+        try {
+            const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
+            if (res && res.ok) {
+                toast(`IMEI already exists in database: ${imei}`, 'error');
+                addToScannedQueueUI(imei, true, 'Exists in DB');
+                return;
+            }
+        } catch(ex) {}
+
+        // Add to queue
+        scannedImeiQueue.push(imei);
+        addToScannedQueueUI(imei, false);
+        updateScanCount();
+        toast(`IMEI scanned: ${imei}`, 'scan');
+
+        // Auto-focus back for next scan
+        scanInput.focus();
+    });
+
     document.getElementById('btn-add-imei').onclick = async () => {
         const res = await api('/products?lite=true');
         if (!res) return;
@@ -148,15 +189,24 @@ function setupImeiModal() {
             document.getElementById('imei-warranty').value = opt.dataset.warranty || 12;
         };
         sel.dispatchEvent(new Event('change'));
+        // Reset
+        scannedImeiQueue = [];
+        document.getElementById('imei-scanned-queue').innerHTML = '';
         document.getElementById('imei-numbers').value = '';
+        updateScanCount();
         openModal('modal-imei');
+        // Auto-focus scan field
+        setTimeout(() => scanInput.focus(), 300);
     };
+
     document.getElementById('btn-save-imei').onclick = async () => {
-        const nums = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
-        if (!nums.length) return toast('Enter at least one IMEI','error');
+        // Merge scanned queue + bulk textarea
+        const bulkText = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
+        const allImeis = [...new Set([...scannedImeiQueue, ...bulkText])];
+        if (!allImeis.length) return toast('Scan or enter at least one IMEI','error');
         const data = {
             product_id: document.getElementById('imei-product').value,
-            imei_numbers: nums,
+            imei_numbers: allImeis,
             purchase_price: parseFloat(document.getElementById('imei-purchase-price').value)||0,
             selling_price: parseFloat(document.getElementById('imei-selling-price').value)||0,
             warranty_months: parseInt(document.getElementById('imei-warranty').value)||12
@@ -166,11 +216,32 @@ function setupImeiModal() {
             if (!res) return;
             const d = await res.json();
             if (!res.ok) throw new Error(d.error);
-            toast(`${d.added} IMEI items added`);
+            toast(`${d.added} IMEI items added successfully`);
             if (d.errors && d.errors.length) toast(d.errors.join(', '),'error');
             closeModal('modal-imei'); loadImeiList();
         } catch(e) { toast(e.message,'error'); }
     };
+}
+
+function addToScannedQueueUI(imei, isError, errorMsg) {
+    const queue = document.getElementById('imei-scanned-queue');
+    const div = document.createElement('div');
+    div.className = `scanned-item ${isError ? 'error' : ''}`;
+    div.innerHTML = `<span>${imei} ${isError ? `<small>(${errorMsg})</small>` : '<i class="bx bx-check" style="color:var(--success)"></i>'}</span>
+        ${!isError ? `<button class="remove-scan" onclick="removeFromQueue('${imei}',this)">&times;</button>` : ''}`;
+    queue.insertBefore(div, queue.firstChild);
+    // Flash effect
+    if (!isError) div.style.animation = 'fadeIn 0.3s ease';
+}
+
+function removeFromQueue(imei, btn) {
+    scannedImeiQueue = scannedImeiQueue.filter(i => i !== imei);
+    btn.parentElement.remove();
+    updateScanCount();
+}
+
+function updateScanCount() {
+    document.getElementById('imei-scan-count').textContent = `${scannedImeiQueue.length} scanned`;
 }
 
 async function viewImeiDetail(id) {

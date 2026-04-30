@@ -4,19 +4,23 @@ let bizName = localStorage.getItem('pos_business') || '';
 let role = localStorage.getItem('pos_role') || 'user';
 let products = [], customers = [], currentBill = [], imeiInBill = [];
 let hasImeiInBill = false;
+let scanModeActive = false;
+let voucherDiscount = 0;
+let voucherCode = '';
 
 // === UTILITY ===
 function toast(msg, type='success') {
     const c = document.getElementById('toast-container');
     const t = document.createElement('div');
-    t.style.cssText = `padding:12px 18px;border-radius:8px;color:#fff;font-weight:500;font-size:13px;
-        box-shadow:0 8px 20px rgba(0,0,0,0.15);opacity:0;transform:translateY(-20px);
-        transition:all 0.4s ease;display:flex;align-items:center;gap:8px;
-        background:${type==='success'?'#10b981':'#ef4444'}`;
-    t.innerHTML = `<i class='bx ${type==='success'?'bx-check-circle':'bx-error-circle'}'></i>${msg}`;
+    t.style.cssText = `padding:12px 18px;border-radius:10px;color:#fff;font-weight:500;font-size:13px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.18);opacity:0;transform:translateY(-20px);
+        transition:all 0.4s ease;display:flex;align-items:center;gap:8px;max-width:360px;
+        background:${type==='success'?'linear-gradient(135deg,#10b981,#059669)':type==='scan'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#ef4444,#dc2626)'}`;
+    const icon = type==='success'?'bx-check-circle':type==='scan'?'bx-barcode':'bx-error-circle';
+    t.innerHTML = `<i class='bx ${icon}'></i>${msg}`;
     c.appendChild(t);
     requestAnimationFrame(() => { t.style.opacity='1'; t.style.transform='translateY(0)'; });
-    setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 400); }, 4000);
+    setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 400); }, 3500);
 }
 
 async function api(url, opts={}) {
@@ -42,6 +46,11 @@ function statusBadge(s) {
         'Sent to SLT':'yellow','Received from SLT':'blue','Delivered to Customer':'green',
         'Replaced':'gray','Rejected':'red','Cancelled':'red'};
     return `<span class="badge badge-${m[s]||'gray'}">${s}</span>`;
+}
+
+// Sanitize barcode scanner input
+function sanitizeBarcode(raw) {
+    return raw.replace(/[\r\n\t]/g, '').replace(/^[^0-9]*/,'').replace(/[^0-9]*$/,'').trim();
 }
 
 // === AUTH ===
@@ -115,7 +124,7 @@ function setupNav() {
             currentView = target;
             if(target==='dashboard-view') loadDashboard();
             if(target==='inventory-view') loadInventory();
-            if(target==='pos-view') loadPOS();
+            if(target==='pos-view') { loadPOS(); focusScanField(); }
             if(target==='imei-view') loadImeiList();
             if(target==='customers-view') loadCustomers();
             if(target==='invoices-view') loadInvoices();
@@ -126,9 +135,46 @@ function setupNav() {
     });
 }
 
+// === SCAN MODE ===
+function toggleScanMode() {
+    scanModeActive = !scanModeActive;
+    const bar = document.getElementById('scan-mode-bar');
+    const btn = document.getElementById('btn-scan-mode');
+    if (scanModeActive) {
+        bar.classList.add('active');
+        btn.innerHTML = '<i class="bx bx-stop"></i> Stop';
+        btn.classList.add('btn-danger');
+        btn.classList.remove('btn-primary');
+        document.getElementById('pos-view').classList.add('scan-mode-active');
+        focusScanField();
+    } else {
+        bar.classList.remove('active');
+        btn.innerHTML = '<i class="bx bx-broadcast"></i> Scan';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-primary');
+        document.getElementById('pos-view').classList.remove('scan-mode-active');
+    }
+}
+
+function focusScanField() {
+    setTimeout(() => { const el = document.getElementById('pos-scan'); if(el) el.focus(); }, 100);
+}
+
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
+    // Scan mode toggle
+    document.getElementById('btn-scan-mode').onclick = toggleScanMode;
+    // Clear bill button
+    document.getElementById('btn-clear-bill').onclick = () => {
+        if (currentBill.length && !confirm('Clear the current bill?')) return;
+        currentBill = []; imeiInBill = []; hasImeiInBill = false;
+        voucherDiscount = 0; voucherCode = '';
+        document.getElementById('pos-customer-box').style.display = 'none';
+        document.getElementById('voucher-discount-row').style.display = 'none';
+        document.getElementById('pos-voucher').value = '';
+        renderBill();
+    };
 });

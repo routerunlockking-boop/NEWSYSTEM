@@ -82,14 +82,31 @@
         <section id="pos-view" class="view">
             <div class="pos-grid">
                 <div class="pos-left">
+                    <!-- Scan Mode Indicator -->
+                    <div class="scan-mode-bar" id="scan-mode-bar">
+                        <i class='bx bx-broadcast'></i>
+                        <span>SCAN MODE ACTIVE — Ready to scan barcodes</span>
+                    </div>
                     <div class="pos-search-bar">
-                        <div class="scanner-input" style="flex:1"><i class='bx bx-barcode'></i><input type="text" id="pos-scan" class="form-control" placeholder="Scan IMEI or barcode... (Enter)"></div>
-                        <div class="search-input" style="flex:1"><i class='bx bx-search' style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i><input type="text" id="pos-search" class="form-control" style="padding-left:40px" placeholder="Search products..."></div>
+                        <div class="scanner-input" style="flex:1.2">
+                            <i class='bx bx-barcode'></i>
+                            <input type="text" id="pos-scan" class="form-control" placeholder="Scan IMEI / barcode... (auto-detect)" autocomplete="off">
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-scan-mode" title="Toggle Scan Mode">
+                            <i class='bx bx-broadcast'></i> Scan
+                        </button>
+                        <div class="search-input" style="flex:1">
+                            <i class='bx bx-search'></i>
+                            <input type="text" id="pos-search" class="form-control" style="padding-left:38px" placeholder="Search products...">
+                        </div>
                     </div>
                     <div class="pos-items-grid" id="pos-products"></div>
                 </div>
                 <div class="pos-right">
-                    <div class="bill-head"><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
+                    <div class="bill-head">
+                        <div><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
+                        <button class="btn btn-outline btn-sm" id="btn-clear-bill" title="Clear Bill"><i class='bx bx-trash'></i> Clear</button>
+                    </div>
                     <!-- Customer box for IMEI sales -->
                     <div class="customer-box" id="pos-customer-box" style="display:none">
                         <h4><i class='bx bx-user'></i> Customer Details (Required for IMEI items)</h4>
@@ -105,7 +122,7 @@
                     </div>
                     <div class="bill-items" id="bill-items"></div>
                     <div class="bill-foot">
-                        <div class="form-row" style="margin-bottom:12px">
+                        <div class="form-row" style="margin-bottom:10px">
                             <div class="form-group" style="margin-bottom:0"><label>Payment</label>
                                 <select id="pos-payment" class="form-control"><option>Cash</option><option>Bank Payment</option><option>COD</option></select>
                             </div>
@@ -113,7 +130,12 @@
                                 <input type="number" id="pos-paid" class="form-control" step="0.01" placeholder="0.00">
                             </div>
                         </div>
+                        <div class="voucher-row">
+                            <input type="text" id="pos-voucher" class="form-control" placeholder="Voucher code">
+                            <button class="btn btn-outline btn-sm" id="btn-apply-voucher">Apply</button>
+                        </div>
                         <div class="summary-row"><span>Subtotal</span><span id="pos-subtotal">0.00</span></div>
+                        <div class="summary-row" id="voucher-discount-row" style="display:none;color:var(--success)"><span>Discount</span><span id="pos-discount">-0.00</span></div>
                         <div class="summary-row"><span>Balance</span><span id="pos-balance">0.00</span></div>
                         <div class="summary-row total"><span>TOTAL</span><span id="pos-total">0.00</span></div>
                         <button class="btn btn-primary btn-block btn-lg" id="btn-submit-bill"><i class='bx bx-printer'></i> Submit & Print</button>
@@ -138,8 +160,8 @@
         <section id="imei-view" class="view">
             <div class="view-head"><h2>IMEI / Serial Tracker</h2>
                 <div class="view-actions">
-                    <div class="scanner-input"><i class='bx bx-search'></i><input type="text" id="imei-search" class="form-control" placeholder="Search IMEI, phone, NIC..." style="width:280px"></div>
-                    <select id="imei-status-filter" class="form-control" style="width:160px"><option value="">All Status</option>
+                    <div class="scanner-input"><i class='bx bx-search'></i><input type="text" id="imei-search" class="form-control" placeholder="Search IMEI, phone, NIC..." style="width:260px"></div>
+                    <select id="imei-status-filter" class="form-control" style="width:150px"><option value="">All Status</option>
                         <option>In Stock</option><option>Sold</option><option>Returned</option><option>Under Repair</option>
                         <option>Sent to SLT</option><option>Received from SLT</option><option>Delivered to Customer</option>
                         <option>Replaced</option><option>Rejected</option><option>Cancelled</option>
@@ -155,9 +177,9 @@
         <!-- WARRANTY -->
         <section id="warranty-view" class="view">
             <div class="view-head"><h2>Warranty Lookup</h2></div>
-            <div style="max-width:600px;margin:0 auto 28px">
-                <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="warranty-scan" class="form-control" placeholder="Scan or enter IMEI number..." style="font-size:16px;padding:14px 14px 14px 44px"></div>
-                <button class="btn btn-primary btn-block btn-lg" id="btn-warranty-lookup" style="margin-top:12px"><i class='bx bx-search'></i> Lookup Warranty</button>
+            <div style="max-width:600px;margin:0 auto 24px">
+                <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="warranty-scan" class="form-control" placeholder="Scan or enter IMEI number..." style="font-size:15px;padding:13px 13px 13px 44px" autocomplete="off"></div>
+                <button class="btn btn-primary btn-block btn-lg" id="btn-warranty-lookup" style="margin-top:10px"><i class='bx bx-search'></i> Lookup Warranty</button>
             </div>
             <div id="warranty-result" style="display:none"></div>
         </section>
@@ -166,7 +188,7 @@
         <section id="customers-view" class="view">
             <div class="view-head"><h2>Customers</h2>
                 <div class="view-actions">
-                    <input type="text" id="cust-search" class="form-control" placeholder="Search..." style="width:220px">
+                    <input type="text" id="cust-search" class="form-control" placeholder="Search..." style="width:200px">
                     <button class="btn btn-primary" id="btn-add-customer"><i class='bx bx-user-plus'></i> Add Customer</button>
                 </div>
             </div>
@@ -179,8 +201,8 @@
         <section id="invoices-view" class="view">
             <div class="view-head"><h2>Invoices</h2>
                 <div class="view-actions">
-                    <input type="date" id="inv-filter-date" class="form-control" style="width:160px">
-                    <input type="month" id="inv-filter-month" class="form-control" style="width:160px">
+                    <input type="date" id="inv-filter-date" class="form-control" style="width:150px">
+                    <input type="month" id="inv-filter-month" class="form-control" style="width:150px">
                     <button class="btn btn-outline" id="btn-clear-inv-filter">Clear</button>
                 </div>
             </div>
@@ -193,7 +215,7 @@
         <section id="slt-view" class="view">
             <div class="view-head"><h2>Monthly SLT Report</h2>
                 <div class="view-actions">
-                    <input type="month" id="slt-month" class="form-control" style="width:180px">
+                    <input type="month" id="slt-month" class="form-control" style="width:170px">
                     <button class="btn btn-primary" id="btn-slt-generate"><i class='bx bx-search'></i> Generate</button>
                     <button class="btn btn-success" id="btn-slt-export"><i class='bx bx-download'></i> Export Excel</button>
                 </div>
@@ -206,7 +228,7 @@
         <!-- REPORTS -->
         <section id="reports-view" class="view">
             <div class="view-head"><h2>Business Reports</h2></div>
-            <div style="display:flex;gap:10px;margin-bottom:20px">
+            <div style="display:flex;gap:8px;margin-bottom:18px">
                 <button class="btn btn-primary tab-btn active" data-report="sales">Sales Report</button>
                 <button class="btn btn-outline tab-btn" data-report="products">Product Sales</button>
             </div>
@@ -245,17 +267,32 @@
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-product')">Cancel</button><button class="btn btn-primary" id="btn-save-product">Save Product</button></div>
 </div></div>
 
-<!-- Add IMEI Modal -->
-<div class="modal-bg" id="modal-imei"><div class="modal modal-wide"><div class="modal-head"><h3>Add IMEI Stock</h3><button class="close-btn" onclick="closeModal('modal-imei')">&times;</button></div>
+<!-- Add IMEI Modal — Enhanced with Scanner -->
+<div class="modal-bg" id="modal-imei"><div class="modal modal-wide"><div class="modal-head"><h3><i class='bx bx-chip' style="color:var(--primary)"></i> Receive IMEI Stock</h3><button class="close-btn" onclick="closeModal('modal-imei')">&times;</button></div>
 <div class="modal-body"><form id="imei-form">
     <div class="form-group"><label>Select Product (IMEI Tracked)</label><select id="imei-product" class="form-control"></select></div>
     <div class="form-row"><div class="form-group"><label>Purchase Price</label><input type="number" id="imei-purchase-price" class="form-control" step="0.01"></div>
         <div class="form-group"><label>Selling Price</label><input type="number" id="imei-selling-price" class="form-control" step="0.01"></div>
         <div class="form-group"><label>Warranty (months)</label><input type="number" id="imei-warranty" class="form-control" value="12"></div></div>
-    <div class="form-group"><label>IMEI Numbers (one per line)</label>
-        <textarea id="imei-numbers" class="form-control" rows="8" placeholder="Enter each IMEI number on a new line...&#10;353456789012345&#10;353456789012346&#10;353456789012347"></textarea></div>
+    <!-- Scanner Input for Stock Receiving -->
+    <div class="form-group">
+        <label><i class='bx bx-barcode' style="color:var(--primary)"></i> Scan or Type IMEI</label>
+        <div class="imei-scan-row">
+            <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="imei-scan-input" class="form-control" placeholder="Scan barcode or type IMEI... (Enter to add)" autocomplete="off"></div>
+            <span class="imei-scan-count" id="imei-scan-count">0 scanned</span>
+        </div>
+    </div>
+    <!-- Scanned IMEI Queue -->
+    <div class="scanned-queue" id="imei-scanned-queue"></div>
+    <!-- Fallback: Bulk text entry -->
+    <details style="margin-top:12px">
+        <summary style="font-size:12px;color:var(--text-muted);cursor:pointer"><i class='bx bx-text'></i> Or paste multiple IMEIs (one per line)</summary>
+        <div class="form-group" style="margin-top:8px">
+            <textarea id="imei-numbers" class="form-control" rows="5" placeholder="Paste IMEI numbers here..."></textarea>
+        </div>
+    </details>
 </form></div>
-<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-imei')">Cancel</button><button class="btn btn-primary" id="btn-save-imei">Add IMEI Items</button></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-imei')">Cancel</button><button class="btn btn-primary" id="btn-save-imei"><i class='bx bx-check'></i> Add IMEI Items</button></div>
 </div></div>
 
 <!-- IMEI Detail / Status Modal -->
