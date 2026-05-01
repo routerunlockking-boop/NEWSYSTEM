@@ -49,6 +49,50 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
+// Get own profile — requires auth token
+router.get('/profile', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+        const user = await User.findById(token);
+        if (!user) return res.status(401).json({ error: 'Unauthorized' });
+        res.json({
+            id: user._id.toString(),
+            email: user.email,
+            business_name: user.business_name,
+            whatsapp_number: user.whatsapp_number || '',
+            role: user.role
+        });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Update own profile
+router.put('/profile', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+        const user = await User.findById(token);
+        if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+        const { business_name, email, whatsapp_number, password } = req.body;
+        if (business_name) user.business_name = business_name;
+        if (email) user.email = email;
+        if (whatsapp_number !== undefined) user.whatsapp_number = whatsapp_number;
+        if (password && password.trim()) user.password = password;
+        await user.save();
+        
+        res.json({ message: 'Profile updated successfully', business_name: user.business_name });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Get active users (for cashier dropdown) — requires auth token in header
 router.get('/cashiers', async (req, res) => {
     try {

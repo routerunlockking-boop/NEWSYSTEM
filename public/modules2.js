@@ -97,7 +97,8 @@ async function loadCashiers() {
         const sel = document.getElementById('pos-cashier-select');
         if (sel) {
             sel.innerHTML = '<option value="">-- Select Cashier --</option>' +
-                cashiers.map(c => `<option value="${c.name}">${c.name} (${c.role})</option>`).join('');
+                cashiers.map(c => `<option value="${c.name}">${c.name} (${c.role})</option>`).join('') +
+                '<option value="__custom__">✏️ Type Name...</option>';
             // Auto-select the logged-in user
             const myBiz = localStorage.getItem('pos_business') || '';
             if (myBiz) {
@@ -105,6 +106,17 @@ async function loadCashiers() {
                     if (opt.value === myBiz) { sel.value = myBiz; break; }
                 }
             }
+            // Handle custom cashier name toggle
+            sel.addEventListener('change', function() {
+                const customInput = document.getElementById('pos-cashier-custom');
+                if (this.value === '__custom__') {
+                    customInput.style.display = 'block';
+                    customInput.focus();
+                } else {
+                    customInput.style.display = 'none';
+                    customInput.value = '';
+                }
+            });
         }
     } catch(e) { console.error('Failed to load cashiers:', e); }
 }
@@ -155,7 +167,7 @@ function renderBill() {
     el.innerHTML = currentBill.map((b, i) => `
         <div class="bill-item">
             <div class="bill-item-info"><h4>${b.name}</h4>
-                <p>Rs. ${b.price.toLocaleString()} ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}</p></div>
+                <p><span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}</p></div>
             <div class="bill-item-actions">
                 ${!b.is_imei_item ? `<div class="qty-ctrl">
                     <button class="qty-btn" onclick="changeBillQty(${i},-1)">-</button><span>${b.quantity}</span>
@@ -165,6 +177,16 @@ function renderBill() {
             </div>
         </div>`).join('');
     updateBillTotals();
+}
+
+function editBillPrice(i) {
+    const item = currentBill[i];
+    const newPrice = prompt(`Edit price for "${item.name}":`, item.price);
+    if (newPrice !== null && !isNaN(parseFloat(newPrice))) {
+        currentBill[i].price = parseFloat(newPrice);
+        renderBill();
+        toast(`Price updated to Rs. ${parseFloat(newPrice).toLocaleString()}`);
+    }
 }
 
 function changeBillQty(i, d) { currentBill[i].quantity = Math.max(1, currentBill[i].quantity + d); renderBill(); }
@@ -188,8 +210,10 @@ function updateBillTotals() {
 async function submitBill() {
     if (!currentBill.length) return toast('Add items first', 'error');
     // Validate cashier selection
-    const cashierName = document.getElementById('pos-cashier-select').value;
-    if (!cashierName) { toast('Please select a cashier', 'error'); return; }
+    const cashierSel = document.getElementById('pos-cashier-select').value;
+    const cashierCustom = document.getElementById('pos-cashier-custom').value.trim();
+    const cashierName = cashierSel === '__custom__' ? cashierCustom : cashierSel;
+    if (!cashierName) { toast('Please select or enter a cashier name', 'error'); return; }
     if (hasImeiInBill) {
         const cn = document.getElementById('pos-cust-name').value.trim();
         const cp = document.getElementById('pos-cust-phone').value.trim();
@@ -208,6 +232,7 @@ async function submitBill() {
         customer_name: document.getElementById('pos-cust-name').value || 'Walk-in',
         customer_phone: document.getElementById('pos-cust-phone').value || '',
         customer_nic: document.getElementById('pos-cust-nic').value || '',
+        customer_email: document.getElementById('pos-cust-email').value || '',
         customer_address: document.getElementById('pos-cust-address').value || ''
     };
     try {
@@ -466,10 +491,13 @@ async function loadInvoices() {
     } catch(e) { console.error(e); }
 }
 
+let currentInvoiceData = null; // Store for reprinting
+
 async function viewInvoice(id) {
     try {
         const res = await api(`/invoices/${id}`); if(!res) return;
         const inv = await res.json();
+        currentInvoiceData = inv; // Store for reprint
         document.getElementById('invoice-detail-body').innerHTML = `
             <div style="margin-bottom:16px"><strong>${inv.invoice_number}</strong> · ${inv.date}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:13px">
@@ -479,6 +507,13 @@ async function viewInvoice(id) {
             <table class="data-table" style="margin-bottom:16px"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>${inv.items.map(i=>`<tr><td>${i.product_name}${i.imei_number?` <span class="imei-tag">${i.imei_number}</span>`:''}</td><td>${i.quantity}</td><td>Rs.${i.price.toLocaleString()}</td><td>Rs.${i.subtotal.toLocaleString()}</td></tr>`).join('')}</tbody></table>
             <div style="text-align:right;font-size:20px;font-weight:800;color:var(--primary)">Total: Rs. ${inv.total_amount.toLocaleString()}</div>`;
+        // Bind reprint button
+        document.getElementById('btn-reprint-invoice').onclick = () => {
+            if (currentInvoiceData) {
+                closeModal('modal-invoice');
+                printReceipt(currentInvoiceData);
+            }
+        };
         openModal('modal-invoice');
     } catch(e) { console.error(e); }
 }
@@ -546,17 +581,58 @@ async function loadReports(type='sales') {
 }
 
 // === ADMIN ===
+let adminUsers = [];
+
 async function loadAdmin() {
     try {
         const res = await api('/admin/users'); if (!res) return;
-        const users = await res.json();
-        document.querySelector('#admin-table tbody').innerHTML = users.map(u => `<tr>
-            <td><strong>${u.business_name}</strong></td><td>${u.email}</td><td>${u.role}</td>
+        adminUsers = await res.json();
+        document.querySelector('#admin-table tbody').innerHTML = adminUsers.map(u => `<tr>
+            <td><strong>${u.business_name}</strong></td><td>${u.email}</td>
+            <td>${u.whatsapp_number||'-'}</td>
+            <td>${u.role}</td>
             <td>${u.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-red">Pending</span>'}</td>
-            <td><button class="btn btn-sm ${u.is_active?'btn-warning':'btn-success'}" onclick="toggleUser('${u.id}',${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button>
+            <td><button class="btn btn-sm btn-outline" onclick="editAdminUser('${u.id}')"><i class='bx bx-edit'></i></button>
+                <button class="btn btn-sm ${u.is_active?'btn-warning':'btn-success'}" onclick="toggleUser('${u.id}',${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')"><i class='bx bx-trash'></i></button></td>
         </tr>`).join('');
     } catch(e) { console.error(e); }
+}
+
+function editAdminUser(id) {
+    const u = adminUsers.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('admin-edit-id').value = u.id;
+    document.getElementById('admin-edit-business').value = u.business_name;
+    document.getElementById('admin-edit-email').value = u.email;
+    document.getElementById('admin-edit-phone').value = u.whatsapp_number || '';
+    document.getElementById('admin-edit-role').value = u.role;
+    document.getElementById('admin-edit-password').value = '';
+    document.getElementById('admin-edit-active').checked = u.is_active;
+    openModal('modal-admin-edit');
+}
+
+async function saveAdminEdit() {
+    const id = document.getElementById('admin-edit-id').value;
+    const data = {
+        business_name: document.getElementById('admin-edit-business').value,
+        email: document.getElementById('admin-edit-email').value,
+        whatsapp_number: document.getElementById('admin-edit-phone').value,
+        role: document.getElementById('admin-edit-role').value,
+        is_active: document.getElementById('admin-edit-active').checked
+    };
+    const pw = document.getElementById('admin-edit-password').value;
+    if (pw.trim()) data.password = pw;
+    if (!data.business_name || !data.email) return toast('Business name and email required', 'error');
+    try {
+        const res = await api(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        if (!res) return;
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast('Account updated');
+        closeModal('modal-admin-edit');
+        loadAdmin();
+    } catch(e) { toast(e.message, 'error'); }
 }
 
 async function toggleUser(id, activate) {

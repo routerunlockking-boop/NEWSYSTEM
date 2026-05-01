@@ -86,6 +86,49 @@ document.getElementById('switch-to-login').onclick = () => { document.getElement
 function logout() { token=null; bizName=''; role='user'; localStorage.removeItem('pos_token'); localStorage.removeItem('pos_business'); localStorage.removeItem('pos_role'); checkAuth(); }
 document.getElementById('btn-logout').onclick = logout;
 
+// === PROFILE ===
+document.getElementById('btn-profile').onclick = async () => {
+    try {
+        const res = await fetch(API + '/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) { toast('Failed to load profile', 'error'); return; }
+        const p = await res.json();
+        document.getElementById('profile-business').value = p.business_name || '';
+        document.getElementById('profile-email').value = p.email || '';
+        document.getElementById('profile-phone').value = p.whatsapp_number || '';
+        document.getElementById('profile-role').value = p.role || 'user';
+        document.getElementById('profile-password').value = '';
+        openModal('modal-profile');
+    } catch(e) { toast(e.message, 'error'); }
+};
+
+document.getElementById('btn-save-profile').onclick = async () => {
+    const data = {
+        business_name: document.getElementById('profile-business').value,
+        email: document.getElementById('profile-email').value,
+        whatsapp_number: document.getElementById('profile-phone').value
+    };
+    const pw = document.getElementById('profile-password').value;
+    if (pw.trim()) data.password = pw;
+    if (!data.business_name || !data.email) return toast('Business name and email required', 'error');
+    try {
+        const res = await fetch(API + '/auth/profile', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast('Profile updated successfully!');
+        // Update local state
+        bizName = d.business_name || data.business_name;
+        localStorage.setItem('pos_business', bizName);
+        document.getElementById('biz-name').textContent = bizName;
+        closeModal('modal-profile');
+    } catch(e) { toast(e.message, 'error'); }
+};
+
 function checkAuth() {
     if (token) {
         document.getElementById('auth-overlay').classList.remove('active');
@@ -251,6 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
+    // Admin edit save button
+    document.getElementById('btn-save-admin-edit').onclick = saveAdminEdit;
     // Clear bill button
     document.getElementById('btn-clear-bill').onclick = () => {
         if (currentBill.length && !confirm('Clear the current bill?')) return;

@@ -61,7 +61,7 @@ router.get('/:id', async (req, res) => {
 
 // Create invoice
 router.post('/', async (req, res) => {
-    const { items, total_amount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, payment_method, imei_items } = req.body;
+    const { items, total_amount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, customer_email, payment_method, imei_items } = req.body;
     const parsedTotal = parseFloat(total_amount) || 0;
     const parsedPaid = parseFloat(amount_paid) || 0;
     if (!items || items.length === 0) return res.status(400).json({ error: 'Invalid invoice data' });
@@ -113,12 +113,14 @@ router.post('/', async (req, res) => {
                     name: customer_name,
                     phone: customer_phone,
                     address: customer_address || '',
-                    nic_number: customer_nic || ''
+                    nic_number: customer_nic || '',
+                    email: customer_email || ''
                 });
             } else {
                 customer.name = customer_name;
                 if (customer_address) customer.address = customer_address;
                 if (customer_nic) customer.nic_number = customer_nic;
+                if (customer_email) customer.email = customer_email;
                 await customer.save();
             }
         }
@@ -148,6 +150,7 @@ router.post('/', async (req, res) => {
                     imeiItem.customer_phone = customer_phone || '';
                     imeiItem.customer_address = customer_address || '';
                     imeiItem.customer_nic = customer_nic || '';
+                    imeiItem.customer_email = customer_email || '';
                     imeiItem.invoice_id = invoice._id;
                     imeiItem.sold_date = now;
                     imeiItem.warranty_start_date = now;
