@@ -72,7 +72,12 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
         const res = await fetch(API+'/auth/register', { method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ email:document.getElementById('reg-email').value, password:document.getElementById('reg-password').value, business_name:document.getElementById('reg-business').value })
+            body: JSON.stringify({ 
+                email: document.getElementById('reg-email').value, 
+                password: document.getElementById('reg-password').value, 
+                business_name: document.getElementById('reg-business').value,
+                whatsapp_number: document.getElementById('reg-whatsapp').value
+            })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
@@ -80,8 +85,27 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     } catch(e) { toast(e.message,'error'); }
 });
 
-document.getElementById('switch-to-register').onclick = () => { document.getElementById('login-form').classList.remove('active'); document.getElementById('register-form').classList.add('active'); };
-document.getElementById('switch-to-login').onclick = () => { document.getElementById('register-form').classList.remove('active'); document.getElementById('login-form').classList.add('active'); };
+document.getElementById('forgot-password-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+        const res = await fetch(API+'/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                email: document.getElementById('forgot-email').value,
+                business_name: document.getElementById('forgot-business').value,
+                new_password: document.getElementById('forgot-password').value
+            })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast(d.message); document.getElementById('switch-to-login2').click();
+        document.getElementById('forgot-password-form').reset();
+    } catch(e) { toast(e.message, 'error'); }
+});
+
+document.getElementById('switch-to-register').onclick = () => { document.getElementById('login-form').classList.remove('active'); document.getElementById('forgot-password-form').classList.remove('active'); document.getElementById('register-form').classList.add('active'); };
+document.getElementById('switch-to-login').onclick = () => { document.getElementById('register-form').classList.remove('active'); document.getElementById('forgot-password-form').classList.remove('active'); document.getElementById('login-form').classList.add('active'); };
+document.getElementById('switch-to-forgot').onclick = (e) => { e.preventDefault(); document.getElementById('login-form').classList.remove('active'); document.getElementById('register-form').classList.remove('active'); document.getElementById('forgot-password-form').classList.add('active'); };
+document.getElementById('switch-to-login2').onclick = () => { document.getElementById('forgot-password-form').classList.remove('active'); document.getElementById('login-form').classList.add('active'); };
 
 function logout() { token=null; bizName=''; role='user'; localStorage.removeItem('pos_token'); localStorage.removeItem('pos_business'); localStorage.removeItem('pos_role'); checkAuth(); }
 document.getElementById('btn-logout').onclick = logout;
@@ -133,7 +157,13 @@ function checkAuth() {
     if (token) {
         document.getElementById('auth-overlay').classList.remove('active');
         document.getElementById('biz-name').textContent = bizName;
-        if (role==='admin') { document.getElementById('nav-admin-item').style.display='block'; document.getElementById('nav-admin-divider').style.display='block'; }
+        if (role === 'admin') { 
+            document.getElementById('nav-admin-item').style.display='block'; 
+            document.getElementById('nav-admin-divider').style.display='block'; 
+        } else {
+            document.getElementById('nav-admin-item').style.display='none'; 
+            document.getElementById('nav-admin-divider').style.display='none'; 
+        }
         loadDashboard();
     } else { document.getElementById('auth-overlay').classList.add('active'); }
 }
