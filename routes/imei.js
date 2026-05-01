@@ -160,6 +160,13 @@ router.put('/:id/status', async (req, res) => {
 
         await item.save();
 
+        // Adjust product stock if moving in/out of "In Stock" status
+        if (oldStatus === 'In Stock' && status !== 'In Stock') {
+            await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: -1 } });
+        } else if (oldStatus !== 'In Stock' && status === 'In Stock') {
+            await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: 1 } });
+        }
+
         // Send email notification if requested
         if (send_email && item.customer_email) {
             try {
