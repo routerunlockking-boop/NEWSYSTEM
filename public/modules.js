@@ -39,14 +39,34 @@ async function loadInventory() {
     } catch(e) { console.error(e); }
 }
 
+async function loadCategories() {
+    try {
+        const res = await api('/products/categories');
+        if (!res) return;
+        const cats = await res.json();
+        const sel = document.getElementById('prod-category');
+        // Filter out duplicates if "General" is already in cats, though normally it's just user categories
+        sel.innerHTML = '<option value="General">General</option>' + 
+            cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('') +
+            '<option value="__new__">✏️ Add New Category...</option>';
+        document.getElementById('prod-category-new').style.display = 'none';
+        document.getElementById('prod-category-new').value = '';
+    } catch(e) { console.error('Failed to load categories', e); }
+}
+
 function setupProductModal() {
     document.getElementById('prod-imei-tracked').onchange = function() {
         document.getElementById('prod-normal-fields').style.display = this.checked ? 'none' : 'block';
         document.getElementById('prod-imei-fields').style.display = this.checked ? 'block' : 'none';
     };
-    document.getElementById('btn-add-product').onclick = () => {
+    document.getElementById('prod-category').addEventListener('change', function() {
+        document.getElementById('prod-category-new').style.display = this.value === '__new__' ? 'block' : 'none';
+        if (this.value === '__new__') document.getElementById('prod-category-new').focus();
+    });
+    document.getElementById('btn-add-product').onclick = async () => {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
+        await loadCategories();
         document.getElementById('product-modal-title').textContent = 'Add Product';
         document.getElementById('prod-normal-fields').style.display = 'block';
         document.getElementById('prod-imei-fields').style.display = 'none';
@@ -54,9 +74,18 @@ function setupProductModal() {
     };
     document.getElementById('btn-save-product').onclick = async () => {
         const id = document.getElementById('prod-id').value;
+        let categoryName = document.getElementById('prod-category').value;
+        if (categoryName === '__new__') {
+            categoryName = document.getElementById('prod-category-new').value.trim();
+            if (!categoryName) return toast('Please enter a new category name', 'error');
+            try {
+                await api('/products/categories', { method: 'POST', body: JSON.stringify({ name: categoryName }) });
+            } catch(e) { console.error('Failed to create new category', e); }
+        }
+
         const data = {
             name: document.getElementById('prod-name').value,
-            category: document.getElementById('prod-category').value,
+            category: categoryName,
             cost_price: parseFloat(document.getElementById('prod-cost').value)||0,
             price: parseFloat(document.getElementById('prod-price').value)||0,
             is_imei_tracked: document.getElementById('prod-imei-tracked').checked,
@@ -79,6 +108,7 @@ function setupProductModal() {
 async function editProduct(id) {
     const p = products.find(x => x.id === id);
     if (!p) return;
+    await loadCategories();
     document.getElementById('prod-id').value = p.id;
     document.getElementById('prod-name').value = p.name;
     document.getElementById('prod-category').value = p.category || 'General';
