@@ -394,7 +394,7 @@ let suppliers = [];
 async function loadSuppliers() {
     const search = document.getElementById('sup-search')?.value || '';
     try {
-        const res = await api(`/suppliers?search=${encodeURIComponent(search)}`);
+        const res = await api(`/suppliers?search=${encodeURIComponent(search)}&_t=${Date.now()}`);
         if (!res) return;
         suppliers = await res.json();
         
