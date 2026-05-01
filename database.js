@@ -54,7 +54,12 @@ const UserSchema = new mongoose.Schema({
         footer_message1: { type: String, default: 'Thank You! Come Again' },
         footer_message2: { type: String, default: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.' },
         footer_powered_by: { type: String, default: 'Powered by SmartZone' }
-    }
+    },
+    invoice_templates: [{
+        name: { type: String, required: true },
+        is_active: { type: Boolean, default: false },
+        html_content: { type: String, required: true }
+    }]
 });
 
 const CategorySchema = new mongoose.Schema({

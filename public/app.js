@@ -272,6 +272,7 @@ function setupNav() {
             if(target==='customers-view') loadCustomers();
             if(target==='suppliers-view') loadSuppliers();
             if(target==='invoices-view') loadInvoices();
+            if(target==='design-view') loadInvoiceDesigner();
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
             if(target==='slt-view') { /* ready for generate */ }
@@ -472,10 +473,157 @@ async function deleteSupplier(id) {
     } catch(e) { toast(e.message, 'error'); }
 }
 
+// === INVOICE DESIGNER ===
+let invoiceTemplates = [];
+
+function getSampleInvoiceData() {
+    return {
+        invoice_number: 'INV-1001',
+        date: new Date().toLocaleString(),
+        cashier_name: 'John Doe',
+        customer_name: 'Jane Smith',
+        customer_phone: '0712345678',
+        total_amount: 15000,
+        amount_paid: 15000,
+        itemsHtml: `
+            <div style="margin-bottom:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <span style="width:55%;word-break:break-word;padding-right:4px">Sample Router</span>
+                    <span style="width:15%;text-align:center">1</span>
+                    <span style="width:30%;text-align:right">15000.00</span>
+                </div>
+                <div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: 123456789012345</div>
+            </div>
+        `
+    };
+}
+
+function updateLivePreview() {
+    const html = document.getElementById('tpl-html').value;
+    const s = getSampleInvoiceData();
+    let previewHtml = html
+        .replace(/{{business_name}}/g, bizName || 'SMARTZONE')
+        .replace(/{{business_address}}/g, 'Sample Address')
+        .replace(/{{business_contact}}/g, 'Sample Contact')
+        .replace(/{{invoice_number}}/g, s.invoice_number)
+        .replace(/{{date}}/g, s.date)
+        .replace(/{{cashier_name}}/g, s.cashier_name)
+        .replace(/{{customer_name}}/g, s.customer_name)
+        .replace(/{{customer_phone}}/g, s.customer_phone)
+        .replace(/{{items_html}}/g, s.itemsHtml)
+        .replace(/{{total_amount}}/g, s.total_amount.toFixed(2))
+        .replace(/{{amount_paid}}/g, s.amount_paid.toFixed(2))
+        .replace(/{{balance}}/g, '0.00');
+
+    previewHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
+    
+    document.getElementById('tpl-preview').innerHTML = `<div style="width:100%;max-width:80mm;margin:0 auto;font-family:sans-serif;color:#000">${previewHtml}</div>`;
+}
+
+function setupDesigner() {
+    document.getElementById('tpl-html').addEventListener('input', updateLivePreview);
+    
+    document.getElementById('template-select').addEventListener('change', (e) => {
+        const t = invoiceTemplates.find(x => x._id === e.target.value);
+        if (t) {
+            document.getElementById('tpl-id').value = t._id;
+            document.getElementById('tpl-name').value = t.name;
+            document.getElementById('tpl-html').value = t.html_content;
+            updateLivePreview();
+        } else {
+            document.getElementById('tpl-id').value = '';
+            document.getElementById('tpl-name').value = '';
+            document.getElementById('tpl-html').value = '';
+            updateLivePreview();
+        }
+    });
+
+    document.getElementById('btn-new-template').onclick = () => {
+        document.getElementById('template-select').value = '';
+        document.getElementById('tpl-id').value = '';
+        document.getElementById('tpl-name').value = '';
+        document.getElementById('tpl-html').value = `<div style="text-align:center;margin-bottom:12px;">\n  <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">{{business_name}}</h1>\n  <p style="margin:2px 0;font-size:11px;font-weight:500;">{{business_address}}</p>\n</div>\n\n<div style="font-size:11px;font-weight:500;margin-bottom:10px;">\n  Bill No: {{invoice_number}}<br>\n  Date: {{date}}<br>\n  Cashier: {{cashier_name}}\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">\n  <span style="width:55%;">Item</span>\n  <span style="width:15%;text-align:center">Qty</span>\n  <span style="width:30%;text-align:right">Amount</span>\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="font-size:11px;margin-bottom:10px;">\n  {{items_html}}\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">\n  <span>TOTAL</span>\n  <span>{{total_amount}}</span>\n</div>`;
+        updateLivePreview();
+    };
+
+    document.getElementById('btn-save-template').onclick = async () => {
+        const id = document.getElementById('tpl-id').value;
+        const name = document.getElementById('tpl-name').value.trim();
+        const html = document.getElementById('tpl-html').value.trim();
+        if (!name || !html) return toast('Name and HTML are required', 'error');
+        
+        let newTemplates = [...invoiceTemplates];
+        if (id) {
+            const idx = newTemplates.findIndex(t => t._id === id);
+            if (idx > -1) {
+                newTemplates[idx].name = name;
+                newTemplates[idx].html_content = html;
+            }
+        } else {
+            // New template: assign a random ID for now, will be replaced by backend next fetch
+            newTemplates.push({ _id: Date.now().toString(), name, html_content: html, is_active: newTemplates.length === 0 });
+        }
+        
+        try {
+            const res = await api('/auth/profile', { method: 'PUT', body: JSON.stringify({ invoice_templates: newTemplates }) });
+            if (!res.ok) throw new Error('Save failed');
+            toast('Template saved');
+            await loadInvoiceDesigner();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    document.getElementById('btn-delete-template').onclick = async () => {
+        const id = document.getElementById('tpl-id').value;
+        if (!id) return toast('Select a template first', 'error');
+        if (!confirm('Delete this template?')) return;
+        
+        let newTemplates = invoiceTemplates.filter(t => t._id !== id);
+        try {
+            const res = await api('/auth/profile', { method: 'PUT', body: JSON.stringify({ invoice_templates: newTemplates }) });
+            if (!res.ok) throw new Error('Delete failed');
+            toast('Template deleted');
+            await loadInvoiceDesigner();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    document.getElementById('btn-activate-template').onclick = async () => {
+        const id = document.getElementById('tpl-id').value;
+        if (!id) return toast('Select a template first', 'error');
+        
+        let newTemplates = invoiceTemplates.map(t => ({ ...t, is_active: t._id === id }));
+        try {
+            const res = await api('/auth/profile', { method: 'PUT', body: JSON.stringify({ invoice_templates: newTemplates }) });
+            if (!res.ok) throw new Error('Activation failed');
+            toast('Template activated');
+            await loadInvoiceDesigner();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+}
+
+async function loadInvoiceDesigner() {
+    try {
+        const res = await api('/auth/profile');
+        if (!res) return;
+        const p = await res.json();
+        invoiceTemplates = p.invoice_templates || [];
+        
+        const sel = document.getElementById('template-select');
+        sel.innerHTML = '<option value="">-- Select Template --</option>' + 
+            invoiceTemplates.map(t => `<option value="${t._id}">${t.name} ${t.is_active ? '(Active)' : ''}</option>`).join('');
+            
+        // If there's an active template, select it by default if nothing is selected
+        const active = invoiceTemplates.find(t => t.is_active);
+        if (active && !document.getElementById('tpl-id').value) {
+            sel.value = active._id;
+            sel.dispatchEvent(new Event('change'));
+        }
+    } catch(e) { console.error(e); }
+}
+
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
-    setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal();
+    setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;

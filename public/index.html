@@ -57,6 +57,7 @@
         <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
         <li><a href="#" class="nav-link" data-target="suppliers-view" data-title="Suppliers"><i class='bx bx-truck'></i><span>Suppliers</span></a></li>
         <li><a href="#" class="nav-link" data-target="invoices-view" data-title="Invoices"><i class='bx bx-receipt'></i><span>Invoices</span></a></li>
+        <li><a href="#" class="nav-link" data-target="design-view" data-title="Invoice Designer"><i class='bx bx-brush'></i><span>Invoice Designer</span></a></li>
         <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
         <li><a href="#" class="nav-link" data-target="reports-view" data-title="Reports"><i class='bx bx-bar-chart-alt-2'></i><span>Reports</span></a></li>
         <li class="nav-divider" id="nav-admin-divider" style="display:none"></li>
@@ -264,6 +265,42 @@
             <div class="table-card"><div class="table-responsive">
                 <table class="data-table" id="invoices-table"><thead><tr><th>Invoice#</th><th>Date</th><th>Customer</th><th>Cashier</th><th>Total</th><th>Profit</th><th>Actions</th></tr></thead><tbody></tbody></table>
             </div></div>
+        </section>
+
+        <!-- INVOICE DESIGNER -->
+        <section id="design-view" class="view">
+            <div class="view-head"><h2>Invoice Designer</h2>
+                <div class="view-actions">
+                    <select id="template-select" class="form-control" style="width:200px">
+                        <option value="">-- Select Template --</option>
+                    </select>
+                    <button class="btn btn-primary" id="btn-new-template"><i class='bx bx-plus'></i> New</button>
+                    <button class="btn btn-success" id="btn-save-template"><i class='bx bx-save'></i> Save</button>
+                    <button class="btn btn-danger" id="btn-delete-template"><i class='bx bx-trash'></i> Delete</button>
+                    <button class="btn btn-outline" id="btn-activate-template"><i class='bx bx-check-circle'></i> Set Active</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:15px;height:calc(100vh - 160px)">
+                <div style="flex:1;background:#fff;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,0.05);display:flex;flex-direction:column">
+                    <input type="hidden" id="tpl-id">
+                    <div class="form-group"><label>Template Name</label><input type="text" id="tpl-name" class="form-control" placeholder="E.g., Minimal Template"></div>
+                    <div class="form-group" style="flex:1;display:flex;flex-direction:column">
+                        <label>HTML Code</label>
+                        <textarea id="tpl-html" class="form-control" style="flex:1;font-family:monospace;font-size:12px;resize:none" placeholder="Write your HTML template here... Use placeholders like {{bill_no}}, {{total}}"></textarea>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:10px">
+                        <strong>Available Placeholders:</strong><br>
+                        <code>{{business_name}}</code>, <code>{{business_address}}</code>, <code>{{business_contact}}</code><br>
+                        <code>{{invoice_number}}</code>, <code>{{date}}</code>, <code>{{cashier_name}}</code>, <code>{{customer_name}}</code>, <code>{{customer_phone}}</code><br>
+                        <code>{{items_html}}</code>, <code>{{total_amount}}</code>, <code>{{amount_paid}}</code>, <code>{{balance}}</code><br>
+                        * Note: "Powered by SmartZone" will be automatically appended.
+                    </div>
+                </div>
+                <div style="width:85mm;background:#f8fafc;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow-y:auto">
+                    <h4 style="margin-bottom:10px;text-align:center;color:var(--text-muted)">Live Preview</h4>
+                    <div id="tpl-preview" style="background:#fff;padding:10px;border:1px solid #ddd;min-height:200px"></div>
+                </div>
+            </div>
         </section>
 
         <!-- SLT REPORTS -->

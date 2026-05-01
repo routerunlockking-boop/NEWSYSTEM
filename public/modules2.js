@@ -283,13 +283,18 @@ async function printReceipt(inv) {
         footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.',
         footer_powered_by: 'Powered by SmartZone'
     };
+    let activeTemplateHtml = null;
     try {
         const res = await api('/auth/profile');
         if (res && res.ok) {
             const p = await res.json();
             if (p.invoice_settings) invSettings = { ...invSettings, ...p.invoice_settings };
+            if (p.invoice_templates) {
+                const active = p.invoice_templates.find(t => t.is_active);
+                if (active) activeTemplateHtml = active.html_content;
+            }
         }
-    } catch(e) { console.warn('Could not load invoice settings', e); }
+    } catch(e) { console.warn('Could not load profile settings', e); }
 
     // Calculate balance
     const paid = inv.amount_paid || 0;
@@ -306,76 +311,98 @@ async function printReceipt(inv) {
         </div>
     `).join('');
 
-    pa.innerHTML = `
-        <div style="width:100%;max-width:80mm;">
-            <div style="text-align:center;margin-bottom:12px;">
-                <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
-                <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
-                <p style="margin:0;font-size:11px;font-weight:500;">${invSettings.header_contact}</p>
-                <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
-                <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
-            </div>
+    let finalHtml = '';
+    
+    if (activeTemplateHtml) {
+        finalHtml = activeTemplateHtml
+            .replace(/{{business_name}}/g, invSettings.header_title || 'SMARTZONE')
+            .replace(/{{business_address}}/g, invSettings.header_subtitle || '')
+            .replace(/{{business_contact}}/g, invSettings.header_contact || '')
+            .replace(/{{invoice_number}}/g, inv.invoice_number)
+            .replace(/{{date}}/g, inv.date)
+            .replace(/{{cashier_name}}/g, inv.cashier_name || '')
+            .replace(/{{customer_name}}/g, inv.customer_name || 'Walk-in')
+            .replace(/{{customer_phone}}/g, inv.customer_phone || '')
+            .replace(/{{items_html}}/g, itemsHtml)
+            .replace(/{{total_amount}}/g, inv.total_amount.toFixed(2))
+            .replace(/{{amount_paid}}/g, paid.toFixed(2))
+            .replace(/{{balance}}/g, balance.toFixed(2));
             
-            <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                    <span>${invSettings.label_bill_no} ${inv.invoice_number}</span>
-                    <span>${inv.date}</span>
+        finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
+        pa.innerHTML = `<div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">${finalHtml}</div>`;
+    } else {
+        pa.innerHTML = `
+            <div style="width:100%;max-width:80mm;">
+                <div style="text-align:center;margin-bottom:12px;">
+                    <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
+                    <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
+                    <p style="margin:0;font-size:11px;font-weight:500;">${invSettings.header_contact}</p>
+                    <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                    <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
                 </div>
-                ${inv.cashier_name && inv.cashier_name !== 'System' ? `
-                <div style="margin-bottom:4px;">${invSettings.label_cashier} <strong>${inv.cashier_name}</strong></div>` : ''}
-                ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
-                <div style="margin-top:6px;">
-                    <div style="font-weight:700;">${invSettings.label_customer} ${inv.customer_name}</div>
-                    ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
-                </div>` : ''}
-            </div>
-            
-            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
-            
-            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
-                <span style="width:55%;text-align:left">${invSettings.label_item}</span>
-                <span style="width:15%;text-align:center">${invSettings.label_qty}</span>
-                <span style="width:30%;text-align:right">${invSettings.label_amount}</span>
-            </div>
-            
-            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
-            
-            <div style="font-size:11px;margin-bottom:10px;">
-                ${itemsHtml}
-            </div>
-            
-            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
-            
-            <div style="font-size:12px;margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                    <span>${invSettings.label_subtotal}</span>
-                    <span>${inv.total_amount.toFixed(2)}</span>
+                
+                <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${invSettings.label_bill_no} ${inv.invoice_number}</span>
+                        <span>${inv.date}</span>
+                    </div>
+                    ${inv.cashier_name && inv.cashier_name !== 'System' ? `
+                    <div style="margin-bottom:4px;">${invSettings.label_cashier} <strong>${inv.cashier_name}</strong></div>` : ''}
+                    ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
+                    <div style="margin-top:6px;">
+                        <div style="font-weight:700;">${invSettings.label_customer} ${inv.customer_name}</div>
+                        ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
+                    </div>` : ''}
                 </div>
-                <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
-                <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
-                    <span>${invSettings.label_total}</span>
-                    <span>${inv.total_amount.toFixed(2)}</span>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                    <span style="width:55%;text-align:left">${invSettings.label_item}</span>
+                    <span style="width:15%;text-align:center">${invSettings.label_qty}</span>
+                    <span style="width:30%;text-align:right">${invSettings.label_amount}</span>
                 </div>
-                <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
-                <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
-                    <span>${invSettings.label_amount_paid}</span>
-                    <span>${paid.toFixed(2)}</span>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="font-size:11px;margin-bottom:10px;">
+                    ${itemsHtml}
                 </div>
-                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
-                    <span>${invSettings.label_balance}</span>
-                    <span>${balance.toFixed(2)}</span>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="font-size:12px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${invSettings.label_subtotal}</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
+                        <span>${invSettings.label_total}</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
+                        <span>${invSettings.label_amount_paid}</span>
+                        <span>${paid.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
+                        <span>${invSettings.label_balance}</span>
+                        <span>${balance.toFixed(2)}</span>
+                    </div>
+                </div>
+                
+                <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+                
+                <div style="text-align:center;font-size:10px;margin-top:12px;">
+                    <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${invSettings.footer_message1}</p>
+                    <p style="margin:0 0 8px 0;line-height:1.3;">${invSettings.footer_message2}</p>
+                    <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p>
                 </div>
             </div>
-            
-            <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
-            
-            <div style="text-align:center;font-size:10px;margin-top:12px;">
-                <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${invSettings.footer_message1}</p>
-                <p style="margin:0 0 8px 0;line-height:1.3;">${invSettings.footer_message2}</p>
-                <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">${invSettings.footer_powered_by}</p>
-            </div>
-        </div>
-    `;
+        `;
+    }
+
     pa.style.display = 'block';
     
     // window.print blocks the thread. Once the print dialog closes, we hide the area and refocus scanner.

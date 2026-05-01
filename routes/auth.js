@@ -64,7 +64,8 @@ router.get('/profile', async (req, res) => {
             business_name: user.business_name,
             whatsapp_number: user.whatsapp_number || '',
             role: user.role,
-            invoice_settings: user.invoice_settings || {}
+            invoice_settings: user.invoice_settings || {},
+            invoice_templates: user.invoice_templates || []
         });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -81,13 +82,16 @@ router.put('/profile', async (req, res) => {
         const user = await User.findById(token);
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-        const { business_name, email, whatsapp_number, password, invoice_settings } = req.body;
+        const { business_name, email, whatsapp_number, password, invoice_settings, invoice_templates } = req.body;
         if (business_name) user.business_name = business_name;
         if (email) user.email = email;
         if (whatsapp_number !== undefined) user.whatsapp_number = whatsapp_number;
         if (password && password.trim()) user.password = password;
         if (invoice_settings) {
             user.invoice_settings = { ...user.invoice_settings, ...invoice_settings };
+        }
+        if (invoice_templates) {
+            user.invoice_templates = invoice_templates;
         }
         await user.save();
         
