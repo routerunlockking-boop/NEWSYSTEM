@@ -24,7 +24,7 @@ async function loadDashboard() {
 // === INVENTORY ===
 async function loadInventory() {
     try {
-        const res = await api('/products?lite=true');
+        const res = await api(`/products?lite=true&_t=${Date.now()}`);
         if (!res) return;
         products = await res.json();
         const tb = document.querySelector('#inv-table tbody');
@@ -89,11 +89,15 @@ function setupProductModal() {
             cost_price: parseFloat(document.getElementById('prod-cost').value)||0,
             price: parseFloat(document.getElementById('prod-price').value)||0,
             is_imei_tracked: document.getElementById('prod-imei-tracked').checked,
-            quantity: document.getElementById('prod-imei-tracked').checked ? 0 : (parseInt(document.getElementById('prod-qty').value)||0),
             warranty_months: parseInt(document.getElementById('prod-warranty').value)||12,
             barcode: document.getElementById('prod-barcode').value,
             supplier: document.getElementById('prod-supplier').value || ''
         };
+        if (!data.is_imei_tracked) {
+            data.quantity = parseInt(document.getElementById('prod-qty').value)||0;
+        } else if (!id) {
+            data.quantity = 0;
+        }
         if (!data.name || !data.price) return toast('Name and price required','error');
         try {
             const res = await api(id ? `/products/${id}` : '/products', { method: id?'PUT':'POST', body: JSON.stringify(data) });
@@ -145,7 +149,8 @@ async function loadImeiList() {
         const status = document.getElementById('imei-status-filter').value;
         let url = '/imei?';
         if (search) url += `search=${encodeURIComponent(search)}&`;
-        if (status) url += `status=${encodeURIComponent(status)}`;
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        url += `_t=${Date.now()}`;
         const res = await api(url);
         if (!res) return;
         const items = await res.json();

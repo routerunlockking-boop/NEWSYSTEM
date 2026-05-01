@@ -122,10 +122,10 @@ async function loadCashiers() {
 }
 
 async function loadPOS() {
-    if (!products.length) {
-        const res = await api('/products?lite=true');
+    try {
+        const res = await api(`/products?lite=true&_t=${Date.now()}`);
         if (res) products = await res.json();
-    }
+    } catch(e) {}
     renderPOSGrid('');
 }
 

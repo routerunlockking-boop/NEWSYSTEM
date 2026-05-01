@@ -72,13 +72,16 @@ router.put('/:id', async (req, res) => {
     const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
     try {
         const qf = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, user_id: req.user._id };
-        const product = await Product.findOneAndUpdate(qf, {
-            name, barcode: barcode || '', quantity, cost_price: cost_price || 0, price, image,
+        const updateData = {
+            name, barcode: barcode || '', cost_price: cost_price || 0, price, image,
             category: category || 'General',
             is_imei_tracked: is_imei_tracked || false,
             warranty_months: warranty_months || 0,
             supplier: supplier || ''
-        }, { new: true });
+        };
+        if (quantity !== undefined) updateData.quantity = quantity;
+
+        const product = await Product.findOneAndUpdate(qf, updateData, { new: true });
         if (!product) return res.status(404).json({ error: 'Product not found' });
         res.json({ message: 'Product updated successfully' });
     } catch (err) {
