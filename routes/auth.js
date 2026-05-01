@@ -49,4 +49,32 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
+// Get active users (for cashier dropdown) — requires auth token in header
+router.get('/cashiers', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+        const requestingUser = await User.findById(token);
+        if (!requestingUser) return res.status(401).json({ error: 'Unauthorized' });
+
+        const users = await User.find({ is_active: true }).select('business_name role email');
+        // Also include admin
+        const adminUser = await User.findOne({ role: 'admin' }).select('business_name role email');
+        const allCashiers = users.map(u => ({
+            id: u._id.toString(),
+            name: u.business_name,
+            role: u.role
+        }));
+        // Ensure admin is in the list if not already
+        if (adminUser && !allCashiers.find(c => c.id === adminUser._id.toString())) {
+            allCashiers.unshift({ id: adminUser._id.toString(), name: adminUser.business_name, role: adminUser.role });
+        }
+        res.json(allCashiers);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

@@ -56,8 +56,57 @@ function setupPOS() {
         }
     });
 
+    // Toggle customer section
+    document.getElementById('btn-toggle-customer')?.addEventListener('click', () => {
+        const box = document.getElementById('pos-customer-box');
+        const isVisible = box.style.display !== 'none';
+        box.style.display = isVisible ? 'none' : 'block';
+        const btn = document.getElementById('btn-toggle-customer');
+        if (!isVisible) {
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-outline');
+        } else {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline');
+        }
+    });
+
+    // Hide customer section (X button)
+    document.getElementById('btn-hide-customer')?.addEventListener('click', () => {
+        if (!hasImeiInBill) {
+            document.getElementById('pos-customer-box').style.display = 'none';
+            const btn = document.getElementById('btn-toggle-customer');
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline');
+        }
+    });
+
     // Load customers for the dropdown
     loadCustomers();
+    // Load cashiers for the dropdown
+    loadCashiers();
+}
+
+async function loadCashiers() {
+    try {
+        const res = await fetch(API + '/auth/cashiers', {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) return;
+        const cashiers = await res.json();
+        const sel = document.getElementById('pos-cashier-select');
+        if (sel) {
+            sel.innerHTML = '<option value="">-- Select Cashier --</option>' +
+                cashiers.map(c => `<option value="${c.name}">${c.name} (${c.role})</option>`).join('');
+            // Auto-select the logged-in user
+            const myBiz = localStorage.getItem('pos_business') || '';
+            if (myBiz) {
+                for (let opt of sel.options) {
+                    if (opt.value === myBiz) { sel.value = myBiz; break; }
+                }
+            }
+        }
+    } catch(e) { console.error('Failed to load cashiers:', e); }
 }
 
 async function loadPOS() {
@@ -92,7 +141,11 @@ function addImeiToBill(item) {
     currentBill.push({ name: item.product_name, price: item.selling_price, quantity: 1, is_imei_item: true, imei_number: item.imei_number, imei_id: item.id });
     imeiInBill.push(item);
     hasImeiInBill = true;
+    // Show customer box and highlight button
     document.getElementById('pos-customer-box').style.display = 'block';
+    const custBtn = document.getElementById('btn-toggle-customer');
+    custBtn.classList.add('btn-primary');
+    custBtn.classList.remove('btn-outline');
     toast(`IMEI added: ${item.imei_number}`);
     renderBill();
 }
@@ -134,6 +187,9 @@ function updateBillTotals() {
 
 async function submitBill() {
     if (!currentBill.length) return toast('Add items first', 'error');
+    // Validate cashier selection
+    const cashierName = document.getElementById('pos-cashier-select').value;
+    if (!cashierName) { toast('Please select a cashier', 'error'); return; }
     if (hasImeiInBill) {
         const cn = document.getElementById('pos-cust-name').value.trim();
         const cp = document.getElementById('pos-cust-phone').value.trim();
@@ -148,6 +204,7 @@ async function submitBill() {
         total_amount: total,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
         payment_method: document.getElementById('pos-payment').value,
+        cashier_name: cashierName,
         customer_name: document.getElementById('pos-cust-name').value || 'Walk-in',
         customer_phone: document.getElementById('pos-cust-phone').value || '',
         customer_nic: document.getElementById('pos-cust-nic').value || '',
@@ -162,6 +219,9 @@ async function submitBill() {
         printReceipt(d.invoice);
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         document.getElementById('pos-customer-box').style.display = 'none';
+        const custBtn = document.getElementById('btn-toggle-customer');
+        custBtn.classList.remove('btn-primary');
+        custBtn.classList.add('btn-outline');
         document.getElementById('pos-cust-select').value = '';
         document.getElementById('pos-paid').value = '';
         document.getElementById('pos-cust-name').value = '';
@@ -207,7 +267,9 @@ function printReceipt(inv) {
                     <span>Bill No: ${inv.invoice_number}</span>
                     <span>${inv.date}</span>
                 </div>
-                ${inv.customer_name ? `
+                ${inv.cashier_name && inv.cashier_name !== 'System' ? `
+                <div style="margin-bottom:4px;">Cashier: <strong>${inv.cashier_name}</strong></div>` : ''}
+                ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
                 <div style="margin-top:6px;">
                     <div style="font-weight:700;">Customer: ${inv.customer_name}</div>
                     ${inv.customer_phone ? `<div>Tel: ${inv.customer_phone}</div>` : ''}
@@ -396,7 +458,7 @@ async function loadInvoices() {
         const tb = document.querySelector('#invoices-table tbody');
         tb.innerHTML = invs.map(i => `<tr>
             <td><strong>${i.invoice_number}</strong></td><td>${i.date} ${i.time||''}</td>
-            <td>${i.customer_name||'-'}</td><td>Rs. ${i.total_amount.toLocaleString()}</td>
+            <td>${i.customer_name||'-'}</td><td>${i.cashier_name||'-'}</td><td>Rs. ${i.total_amount.toLocaleString()}</td>
             <td style="color:var(--success)">Rs. ${(i.total_profit||0).toLocaleString()}</td>
             <td><button class="btn btn-sm btn-outline" onclick="viewInvoice('${i.id}')"><i class='bx bx-show'></i></button>
                 <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${i.id}')"><i class='bx bx-trash'></i></button></td>
@@ -412,7 +474,8 @@ async function viewInvoice(id) {
             <div style="margin-bottom:16px"><strong>${inv.invoice_number}</strong> · ${inv.date}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:13px">
                 <div>Customer: <strong>${inv.customer_name||'-'}</strong></div><div>Phone: ${inv.customer_phone||'-'}</div>
-                <div>NIC: ${inv.customer_nic||'-'}</div><div>Payment: ${inv.payment_method}</div></div>
+                <div>NIC: ${inv.customer_nic||'-'}</div><div>Payment: ${inv.payment_method}</div>
+                <div>Cashier: <strong>${inv.cashier_name||'-'}</strong></div></div>
             <table class="data-table" style="margin-bottom:16px"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>${inv.items.map(i=>`<tr><td>${i.product_name}${i.imei_number?` <span class="imei-tag">${i.imei_number}</span>`:''}</td><td>${i.quantity}</td><td>Rs.${i.price.toLocaleString()}</td><td>Rs.${i.subtotal.toLocaleString()}</td></tr>`).join('')}</tbody></table>
             <div style="text-align:right;font-size:20px;font-weight:800;color:var(--primary)">Total: Rs. ${inv.total_amount.toLocaleString()}</div>`;

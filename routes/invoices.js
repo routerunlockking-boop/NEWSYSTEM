@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
             customer_name: inv.customer_name || '',
             customer_phone: inv.customer_phone || '',
             customer_nic: inv.customer_nic || '',
+            cashier_name: inv.cashier_name || 'System',
             payment_method: inv.payment_method || 'Cash',
             date: inv.date, time: inv.time,
             total_amount: inv.total_amount,
@@ -41,6 +42,7 @@ router.get('/:id', async (req, res) => {
             customer_phone: invoice.customer_phone || '',
             customer_address: invoice.customer_address || '',
             customer_nic: invoice.customer_nic || '',
+            cashier_name: invoice.cashier_name || 'System',
             payment_method: invoice.payment_method || 'Cash',
             date: invoice.date, time: invoice.time,
             total_amount: invoice.total_amount,
@@ -168,6 +170,7 @@ router.post('/', async (req, res) => {
             message: 'Invoice created successfully',
             invoice: {
                 id: invoice._id.toString(), invoice_number,
+                cashier_name: invoice.cashier_name || 'System',
                 customer_name, customer_phone, date, time,
                 total_amount: parsedTotal, amount_paid: parsedPaid,
                 items: formattedItems

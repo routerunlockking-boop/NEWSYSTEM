@@ -257,8 +257,16 @@ document.addEventListener('DOMContentLoaded', () => {
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         voucherDiscount = 0; voucherCode = '';
         document.getElementById('pos-customer-box').style.display = 'none';
+        const custBtn = document.getElementById('btn-toggle-customer');
+        if (custBtn) { custBtn.classList.remove('btn-primary'); custBtn.classList.add('btn-outline'); }
         document.getElementById('voucher-discount-row').style.display = 'none';
         document.getElementById('pos-voucher').value = '';
+        document.getElementById('pos-cust-name').value = '';
+        document.getElementById('pos-cust-phone').value = '';
+        document.getElementById('pos-cust-nic').value = '';
+        document.getElementById('pos-cust-email').value = '';
+        document.getElementById('pos-cust-address').value = '';
+        document.getElementById('pos-cust-select').value = '';
         renderBill();
     };
 });
