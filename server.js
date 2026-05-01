@@ -46,6 +46,7 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/imei', require('./routes/imei'));
 app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/vouchers', require('./routes/vouchers'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));

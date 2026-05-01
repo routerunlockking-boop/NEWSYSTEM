@@ -34,7 +34,14 @@ const UserSchema = new mongoose.Schema({
     marketplace_enabled: { type: Boolean, default: false },
     role: { type: String, default: 'user' }, // admin, user, cashier
     is_active: { type: Boolean, default: false },
-    delete_request: { type: Boolean, default: false }
+    delete_request: { type: Boolean, default: false },
+    invoice_settings: {
+        header_title: { type: String, default: 'SMARTZONE' },
+        header_subtitle: { type: String, default: 'New Town Padaviya, Anuradhapura' },
+        header_contact: { type: String, default: 'Mobile: 078-68000 86' },
+        footer_message1: { type: String, default: 'Thank You! Come Again' },
+        footer_message2: { type: String, default: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.' }
+    }
 });
 
 const CategorySchema = new mongoose.Schema({
@@ -52,7 +59,8 @@ const ProductSchema = new mongoose.Schema({
     price: { type: Number, default: 0.0 },
     is_imei_tracked: { type: Boolean, default: false },
     warranty_months: { type: Number, default: 0 },
-    image: { type: String }
+    image: { type: String },
+    supplier: { type: String, default: '' }
 });
 
 // Status history entry for IMEI items
@@ -140,6 +148,16 @@ const CustomerSchema = new mongoose.Schema({
 CustomerSchema.index({ nic_number: 1 });
 CustomerSchema.index({ phone: 1 });
 
+const SupplierSchema = new mongoose.Schema({
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String, default: '' },
+    address: { type: String, default: '' },
+    nic_number: { type: String, default: '' },
+    created_date: { type: String, default: () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) }
+});
+
 const VoucherSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     code: { type: String, required: true, unique: true },
@@ -158,6 +176,7 @@ const Product = mongoose.model('Product', ProductSchema);
 const ImeiItem = mongoose.model('ImeiItem', ImeiItemSchema);
 const Invoice = mongoose.model('Invoice', InvoiceSchema);
 const Customer = mongoose.model('Customer', CustomerSchema);
+const Supplier = mongoose.model('Supplier', SupplierSchema);
 const Voucher = mongoose.model('Voucher', VoucherSchema);
 
 // Create default admin user
@@ -213,5 +232,6 @@ module.exports = {
     ImeiItem,
     Invoice,
     Customer,
+    Supplier,
     Voucher
 };

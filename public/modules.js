@@ -91,7 +91,8 @@ function setupProductModal() {
             is_imei_tracked: document.getElementById('prod-imei-tracked').checked,
             quantity: document.getElementById('prod-imei-tracked').checked ? 0 : (parseInt(document.getElementById('prod-qty').value)||0),
             warranty_months: parseInt(document.getElementById('prod-warranty').value)||12,
-            barcode: document.getElementById('prod-barcode').value
+            barcode: document.getElementById('prod-barcode').value,
+            supplier: document.getElementById('prod-supplier').value || ''
         };
         if (!data.name || !data.price) return toast('Name and price required','error');
         try {
@@ -112,6 +113,11 @@ async function editProduct(id) {
     document.getElementById('prod-id').value = p.id;
     document.getElementById('prod-name').value = p.name;
     document.getElementById('prod-category').value = p.category || 'General';
+    if (p.supplier && Array.from(document.getElementById('prod-supplier').options).some(o => o.value === p.supplier)) {
+        document.getElementById('prod-supplier').value = p.supplier;
+    } else {
+        document.getElementById('prod-supplier').value = '';
+    }
     document.getElementById('prod-cost').value = p.cost_price;
     document.getElementById('prod-price').value = p.price;
     document.getElementById('prod-qty').value = p.quantity;

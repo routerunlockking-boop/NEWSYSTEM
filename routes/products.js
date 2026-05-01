@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
                 quantity: p.quantity, cost_price: p.cost_price, price: p.price,
                 is_imei_tracked: p.is_imei_tracked || false,
                 warranty_months: p.warranty_months || 0,
+                supplier: p.supplier || '',
                 owner_name: p.user_id ? p.user_id.business_name : 'Unknown'
             };
             if (lite !== 'true') r.image = p.image;
@@ -42,7 +43,7 @@ router.get('/:id/image', async (req, res) => {
 
 // Create product
 router.post('/', async (req, res) => {
-    const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months } = req.body;
+    const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
     if (!name || price === undefined) return res.status(400).json({ error: 'Missing required fields' });
     try {
         const product = await Product.create({
@@ -52,30 +53,31 @@ router.post('/', async (req, res) => {
             cost_price: cost_price || 0, price,
             is_imei_tracked: is_imei_tracked || false,
             warranty_months: warranty_months || 0,
-            image
+            image, supplier: supplier || ''
         });
         res.status(201).json({
             id: product._id.toString(), name, barcode: product.barcode,
             category: product.category,
             quantity: product.quantity, cost_price: product.cost_price, price,
             is_imei_tracked: product.is_imei_tracked,
-            warranty_months: product.warranty_months
+            warranty_months: product.warranty_months,
+            supplier: product.supplier
         });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
 });
 
-// Update product
 router.put('/:id', async (req, res) => {
-    const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months } = req.body;
+    const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
     try {
         const qf = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, user_id: req.user._id };
         const product = await Product.findOneAndUpdate(qf, {
             name, barcode: barcode || '', quantity, cost_price: cost_price || 0, price, image,
             category: category || 'General',
             is_imei_tracked: is_imei_tracked || false,
-            warranty_months: warranty_months || 0
+            warranty_months: warranty_months || 0,
+            supplier: supplier || ''
         }, { new: true });
         if (!product) return res.status(404).json({ error: 'Product not found' });
         res.json({ message: 'Product updated successfully' });

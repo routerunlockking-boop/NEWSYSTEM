@@ -241,7 +241,7 @@ async function submitBill() {
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
         toast('Bill created successfully!');
-        printReceipt(d.invoice);
+        await printReceipt(d.invoice);
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         document.getElementById('pos-customer-box').style.display = 'none';
         const custBtn = document.getElementById('btn-toggle-customer');
@@ -259,9 +259,25 @@ async function submitBill() {
     } catch(e) { toast(e.message, 'error'); }
 }
 
-function printReceipt(inv) {
+async function printReceipt(inv) {
     const pa = document.getElementById('print-area');
     
+    // Fetch custom invoice settings
+    let invSettings = {
+        header_title: 'SMARTZONE',
+        header_subtitle: 'New Town Padaviya, Anuradhapura',
+        header_contact: 'Mobile: 078-68000 86',
+        footer_message1: 'Thank You! Come Again',
+        footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.'
+    };
+    try {
+        const res = await api('/auth/profile');
+        if (res && res.ok) {
+            const p = await res.json();
+            if (p.invoice_settings) invSettings = { ...invSettings, ...p.invoice_settings };
+        }
+    } catch(e) { console.warn('Could not load invoice settings', e); }
+
     // Calculate balance
     const paid = inv.amount_paid || 0;
     const balance = paid > 0 ? (paid - inv.total_amount) : 0;
@@ -280,9 +296,9 @@ function printReceipt(inv) {
     pa.innerHTML = `
         <div style="width:100%;max-width:80mm;">
             <div style="text-align:center;margin-bottom:12px;">
-                <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">SMARTZONE</h1>
-                <p style="margin:2px 0;font-size:11px;font-weight:500;">New Town Padaviya, Anuradhapura</p>
-                <p style="margin:0;font-size:11px;font-weight:500;">Mobile: 078-68000 86</p>
+                <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
+                <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
+                <p style="margin:0;font-size:11px;font-weight:500;">${invSettings.header_contact}</p>
                 <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
                 <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">Tax Invoice</h2>
             </div>
@@ -341,8 +357,8 @@ function printReceipt(inv) {
             <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
             
             <div style="text-align:center;font-size:10px;margin-top:12px;">
-                <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">Thank You! Come Again</p>
-                <p style="margin:0 0 8px 0;line-height:1.3;">Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.</p>
+                <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${invSettings.footer_message1}</p>
+                <p style="margin:0 0 8px 0;line-height:1.3;">${invSettings.footer_message2}</p>
                 <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p>
             </div>
         </div>
@@ -499,21 +515,17 @@ async function viewInvoice(id) {
         const inv = await res.json();
         currentInvoiceData = inv; // Store for reprint
         document.getElementById('invoice-detail-body').innerHTML = `
-            <div style="margin-bottom:16px"><strong>${inv.invoice_number}</strong> · ${inv.date}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:13px">
-                <div>Customer: <strong>${inv.customer_name||'-'}</strong></div><div>Phone: ${inv.customer_phone||'-'}</div>
-                <div>NIC: ${inv.customer_nic||'-'}</div><div>Payment: ${inv.payment_method}</div>
-                <div>Cashier: <strong>${inv.cashier_name||'-'}</strong></div></div>
-            <table class="data-table" style="margin-bottom:16px"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-            <tbody>${inv.items.map(i=>`<tr><td>${i.product_name}${i.imei_number?` <span class="imei-tag">${i.imei_number}</span>`:''}</td><td>${i.quantity}</td><td>Rs.${i.price.toLocaleString()}</td><td>Rs.${i.subtotal.toLocaleString()}</td></tr>`).join('')}</tbody></table>
-            <div style="text-align:right;font-size:20px;font-weight:800;color:var(--primary)">Total: Rs. ${inv.total_amount.toLocaleString()}</div>`;
-        // Bind reprint button
-        document.getElementById('btn-reprint-invoice').onclick = () => {
-            if (currentInvoiceData) {
-                closeModal('modal-invoice');
-                printReceipt(currentInvoiceData);
-            }
-        };
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                <div><strong>Bill No:</strong> ${inv.invoice_number}<br><strong>Date:</strong> ${new Date(inv.date).toLocaleString()}</div>
+                <div style="text-align:right"><strong>Cashier:</strong> ${inv.cashier_name}<br><strong>Customer:</strong> ${inv.customer_name}</div>
+            </div>
+            <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>
+                ${inv.items.map(i => `<tr><td>${i.product_name}${i.imei_number?`<br><small>IMEI: ${i.imei_number}</small>`:''}</td><td>${i.quantity}</td><td>${i.price.toFixed(2)}</td><td>${i.subtotal.toFixed(2)}</td></tr>`).join('')}
+            </tbody></table>
+            <div style="text-align:right;margin-top:10px;font-size:16px"><strong>Total: Rs. ${inv.total_amount.toFixed(2)}</strong></div>
+            <div style="text-align:right;color:var(--text-muted)">Paid: Rs. ${(inv.amount_paid||0).toFixed(2)} | Method: ${inv.payment_method||'Cash'}</div>
+        `;
+        document.getElementById('btn-reprint-invoice').onclick = () => printReceipt(inv);
         openModal('modal-invoice');
     } catch(e) { console.error(e); }
 }

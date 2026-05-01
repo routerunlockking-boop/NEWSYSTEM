@@ -123,6 +123,12 @@ document.getElementById('btn-profile').onclick = async () => {
         document.getElementById('profile-phone').value = p.whatsapp_number || '';
         document.getElementById('profile-role').value = p.role || 'user';
         document.getElementById('profile-password').value = '';
+        const inv = p.invoice_settings || {};
+        document.getElementById('profile-inv-title').value = inv.header_title || 'SMARTZONE';
+        document.getElementById('profile-inv-subtitle').value = inv.header_subtitle || 'New Town Padaviya, Anuradhapura';
+        document.getElementById('profile-inv-contact').value = inv.header_contact || 'Mobile: 078-68000 86';
+        document.getElementById('profile-inv-msg1').value = inv.footer_message1 || 'Thank You! Come Again';
+        document.getElementById('profile-inv-msg2').value = inv.footer_message2 || 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.';
         openModal('modal-profile');
     } catch(e) { toast(e.message, 'error'); }
 };
@@ -131,7 +137,14 @@ document.getElementById('btn-save-profile').onclick = async () => {
     const data = {
         business_name: document.getElementById('profile-business').value,
         email: document.getElementById('profile-email').value,
-        whatsapp_number: document.getElementById('profile-phone').value
+        whatsapp_number: document.getElementById('profile-phone').value,
+        invoice_settings: {
+            header_title: document.getElementById('profile-inv-title').value,
+            header_subtitle: document.getElementById('profile-inv-subtitle').value,
+            header_contact: document.getElementById('profile-inv-contact').value,
+            footer_message1: document.getElementById('profile-inv-msg1').value,
+            footer_message2: document.getElementById('profile-inv-msg2').value
+        }
     };
     const pw = document.getElementById('profile-password').value;
     if (pw.trim()) data.password = pw;
@@ -144,11 +157,10 @@ document.getElementById('btn-save-profile').onclick = async () => {
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
-        toast('Profile updated successfully!');
-        // Update local state
-        bizName = d.business_name || data.business_name;
+        bizName = d.business_name;
         localStorage.setItem('pos_business', bizName);
         document.getElementById('biz-name').textContent = bizName;
+        toast('Profile updated');
         closeModal('modal-profile');
     } catch(e) { toast(e.message, 'error'); }
 };
@@ -200,6 +212,7 @@ function setupNav() {
             if(target==='pos-view') { loadPOS(); focusScanField(); }
             if(target==='imei-view') loadImeiList();
             if(target==='customers-view') loadCustomers();
+            if(target==='suppliers-view') loadSuppliers();
             if(target==='invoices-view') loadInvoices();
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
@@ -317,10 +330,94 @@ function closeCameraScanner() {
     }
 }
 
+// === SUPPLIERS ===
+let suppliers = [];
+async function loadSuppliers() {
+    const search = document.getElementById('sup-search')?.value || '';
+    try {
+        const res = await api(`/suppliers?search=${encodeURIComponent(search)}`);
+        if (!res) return;
+        suppliers = await res.json();
+        
+        // Populate supplier table
+        const tb = document.querySelector('#sup-table tbody');
+        if (tb) {
+            tb.innerHTML = suppliers.map(c => `<tr>
+                <td><strong>${c.name}</strong></td><td>${c.phone}</td>
+                <td>${c.nic_number||'-'}</td><td>${c.email||'-'}</td><td>${c.address||'-'}</td>
+                <td><button class="btn btn-sm btn-outline" onclick="editSupplier('${c.id}')"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSupplier('${c.id}')"><i class='bx bx-trash'></i></button></td>
+            </tr>`).join('');
+        }
+
+        // Populate product modal supplier dropdown
+        const prodSup = document.getElementById('prod-supplier');
+        if (prodSup) {
+            const currentVal = prodSup.value;
+            prodSup.innerHTML = '<option value="">-- No Supplier --</option>' +
+                suppliers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            if (currentVal && suppliers.some(s => s.name === currentVal)) prodSup.value = currentVal;
+        }
+    } catch(e) { console.error(e); }
+}
+
+function setupSupplierModal() {
+    document.getElementById('btn-add-supplier').onclick = () => {
+        document.getElementById('supplier-form').reset();
+        document.getElementById('sup-id').value = '';
+        document.getElementById('supplier-modal-title').textContent = 'Add Supplier';
+        openModal('modal-supplier');
+    };
+    document.getElementById('sup-search').onkeyup = loadSuppliers;
+    
+    document.getElementById('btn-save-supplier').onclick = async () => {
+        const id = document.getElementById('sup-id').value;
+        const data = {
+            name: document.getElementById('sup-name').value,
+            phone: document.getElementById('sup-phone').value,
+            nic_number: document.getElementById('sup-nic').value,
+            email: document.getElementById('sup-email').value,
+            address: document.getElementById('sup-addr').value
+        };
+        if (!data.name || !data.phone) return toast('Name and phone required', 'error');
+        try {
+            const res = await api(id ? `/suppliers/${id}` : '/suppliers', { method: id?'PUT':'POST', body: JSON.stringify(data) });
+            if (!res) return;
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast(id ? 'Supplier updated' : 'Supplier added');
+            closeModal('modal-supplier'); loadSuppliers();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+}
+
+async function editSupplier(id) {
+    const s = suppliers.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('sup-id').value = s.id;
+    document.getElementById('sup-name').value = s.name;
+    document.getElementById('sup-phone').value = s.phone;
+    document.getElementById('sup-nic').value = s.nic_number || '';
+    document.getElementById('sup-email').value = s.email || '';
+    document.getElementById('sup-addr').value = s.address || '';
+    document.getElementById('supplier-modal-title').textContent = 'Edit Supplier';
+    openModal('modal-supplier');
+}
+
+async function deleteSupplier(id) {
+    if (!confirm('Delete this supplier?')) return;
+    try {
+        const res = await api(`/suppliers/${id}`, { method:'DELETE' });
+        if (!res) return;
+        if (!res.ok) throw new Error('Failed to delete');
+        toast('Supplier deleted'); loadSuppliers();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
-    setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal();
+    setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
