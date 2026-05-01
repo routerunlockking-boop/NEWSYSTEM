@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { ImeiItem, Product } = require('../database');
 const { sendStatusEmail } = require('../utils/email');
+const { sendSMS } = require('../utils/sms');
 
 // Get all IMEI items with optional filters
 router.get('/', async (req, res) => {
@@ -140,7 +141,7 @@ router.post('/', async (req, res) => {
 
 // Update IMEI status (warranty claims, returns, etc.)
 router.put('/:id/status', async (req, res) => {
-    const { status, notes, send_email } = req.body;
+    const { status, notes, send_email, send_sms } = req.body;
     if (!status) return res.status(400).json({ error: 'Status is required' });
     try {
         const item = await ImeiItem.findById(req.params.id).populate('product_id', 'name');
@@ -173,6 +174,16 @@ router.put('/:id/status', async (req, res) => {
                 });
             } catch (emailErr) {
                 console.error('Email send failed:', emailErr.message);
+            }
+        }
+
+        // Send SMS notification if requested
+        if (send_sms && item.customer_phone) {
+            try {
+                const smsText = `SmartZone: Status for ${item.product_id ? item.product_id.name : 'device'} (IMEI: ${item.imei_number}) is now ${status}. ${notes ? notes : ''}`;
+                await sendSMS(item.customer_phone, smsText);
+            } catch (smsErr) {
+                console.error('SMS send failed:', smsErr.message);
             }
         }
 

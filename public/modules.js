@@ -285,7 +285,7 @@ function setupImeiModal() {
             if (!res.ok) throw new Error(d.error || 'Failed to save');
             toast(`${d.added} IMEI items added successfully`);
             if (d.errors && d.errors.length) toast(d.errors.join(', '),'error');
-            closeModal('modal-imei'); loadImeiList();
+            closeModal('modal-imei'); loadImeiList(); loadInventory();
         } catch(e) { 
             toast(e.message,'error'); 
         } finally {
@@ -372,7 +372,8 @@ function setupStatusModal() {
         const data = {
             status: document.getElementById('status-new').value,
             notes: document.getElementById('status-notes').value,
-            send_email: document.getElementById('status-send-email').checked
+            send_email: document.getElementById('status-send-email').checked,
+            send_sms: document.getElementById('status-send-sms').checked
         };
         try {
             const res = await api(`/imei/${id}/status`, { method:'PUT', body: JSON.stringify(data) });
@@ -389,5 +390,7 @@ function openStatusModal(id) {
     document.getElementById('status-imei-id').value = id;
     document.getElementById('status-notes').value = '';
     document.getElementById('status-send-email').checked = true;
+    const smsCb = document.getElementById('status-send-sms');
+    if (smsCb) smsCb.checked = true;
     openModal('modal-status');
 }

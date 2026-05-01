@@ -256,6 +256,7 @@ async function submitBill() {
         document.getElementById('pos-cust-address').value = '';
         renderBill(); loadPOS();
         loadCustomers(); // Reload customers to show any newly added one
+        loadInventory(); // Update stock in the inventory UI
     } catch(e) { toast(e.message, 'error'); }
 }
 
