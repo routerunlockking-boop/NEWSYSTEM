@@ -39,8 +39,21 @@ const UserSchema = new mongoose.Schema({
         header_title: { type: String, default: 'SMARTZONE' },
         header_subtitle: { type: String, default: 'New Town Padaviya, Anuradhapura' },
         header_contact: { type: String, default: 'Mobile: 078-68000 86' },
+        tax_invoice_text: { type: String, default: 'Tax Invoice' },
+        label_bill_no: { type: String, default: 'Bill No:' },
+        label_cashier: { type: String, default: 'Cashier:' },
+        label_customer: { type: String, default: 'Customer:' },
+        label_tel: { type: String, default: 'Tel:' },
+        label_item: { type: String, default: 'Item' },
+        label_qty: { type: String, default: 'Qty' },
+        label_amount: { type: String, default: 'Amount' },
+        label_subtotal: { type: String, default: 'Subtotal' },
+        label_total: { type: String, default: 'TOTAL' },
+        label_amount_paid: { type: String, default: 'Amount Paid' },
+        label_balance: { type: String, default: 'Balance' },
         footer_message1: { type: String, default: 'Thank You! Come Again' },
-        footer_message2: { type: String, default: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.' }
+        footer_message2: { type: String, default: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.' },
+        footer_powered_by: { type: String, default: 'Powered by SmartZone' }
     }
 });
 

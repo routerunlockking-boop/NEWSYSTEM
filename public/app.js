@@ -123,12 +123,6 @@ document.getElementById('btn-profile').onclick = async () => {
         document.getElementById('profile-phone').value = p.whatsapp_number || '';
         document.getElementById('profile-role').value = p.role || 'user';
         document.getElementById('profile-password').value = '';
-        const inv = p.invoice_settings || {};
-        document.getElementById('profile-inv-title').value = inv.header_title || 'SMARTZONE';
-        document.getElementById('profile-inv-subtitle').value = inv.header_subtitle || 'New Town Padaviya, Anuradhapura';
-        document.getElementById('profile-inv-contact').value = inv.header_contact || 'Mobile: 078-68000 86';
-        document.getElementById('profile-inv-msg1').value = inv.footer_message1 || 'Thank You! Come Again';
-        document.getElementById('profile-inv-msg2').value = inv.footer_message2 || 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.';
         openModal('modal-profile');
     } catch(e) { toast(e.message, 'error'); }
 };
@@ -137,14 +131,7 @@ document.getElementById('btn-save-profile').onclick = async () => {
     const data = {
         business_name: document.getElementById('profile-business').value,
         email: document.getElementById('profile-email').value,
-        whatsapp_number: document.getElementById('profile-phone').value,
-        invoice_settings: {
-            header_title: document.getElementById('profile-inv-title').value,
-            header_subtitle: document.getElementById('profile-inv-subtitle').value,
-            header_contact: document.getElementById('profile-inv-contact').value,
-            footer_message1: document.getElementById('profile-inv-msg1').value,
-            footer_message2: document.getElementById('profile-inv-msg2').value
-        }
+        whatsapp_number: document.getElementById('profile-phone').value
     };
     const pw = document.getElementById('profile-password').value;
     if (pw.trim()) data.password = pw;
@@ -162,6 +149,77 @@ document.getElementById('btn-save-profile').onclick = async () => {
         document.getElementById('biz-name').textContent = bizName;
         toast('Profile updated');
         closeModal('modal-profile');
+    } catch(e) { toast(e.message, 'error'); }
+};
+
+// === INVOICE SETTINGS ===
+window.openInvoiceSettingsModal = async function() {
+    try {
+        const res = await fetch(API + '/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) { toast('Failed to load profile settings', 'error'); return; }
+        const p = await res.json();
+        const inv = p.invoice_settings || {};
+        document.getElementById('inv-set-title').value = inv.header_title || 'SMARTZONE';
+        document.getElementById('inv-set-subtitle').value = inv.header_subtitle || 'New Town Padaviya, Anuradhapura';
+        document.getElementById('inv-set-contact').value = inv.header_contact || 'Mobile: 078-68000 86';
+        
+        document.getElementById('inv-set-tax').value = inv.tax_invoice_text || 'Tax Invoice';
+        document.getElementById('inv-set-billno').value = inv.label_bill_no || 'Bill No:';
+        document.getElementById('inv-set-cashier').value = inv.label_cashier || 'Cashier:';
+        document.getElementById('inv-set-customer').value = inv.label_customer || 'Customer:';
+        document.getElementById('inv-set-tel').value = inv.label_tel || 'Tel:';
+        
+        document.getElementById('inv-set-item').value = inv.label_item || 'Item';
+        document.getElementById('inv-set-qty').value = inv.label_qty || 'Qty';
+        document.getElementById('inv-set-amt').value = inv.label_amt || 'Amount'; // Assuming amt was used, wait schema says label_amount
+        document.getElementById('inv-set-subtotal').value = inv.label_subtotal || 'Subtotal';
+        document.getElementById('inv-set-total').value = inv.label_total || 'TOTAL';
+        document.getElementById('inv-set-paid').value = inv.label_amount_paid || 'Amount Paid';
+        document.getElementById('inv-set-bal').value = inv.label_balance || 'Balance';
+        
+        document.getElementById('inv-set-msg1').value = inv.footer_message1 || 'Thank You! Come Again';
+        document.getElementById('inv-set-msg2').value = inv.footer_message2 || 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.';
+        document.getElementById('inv-set-powered').value = inv.footer_powered_by || 'Powered by SmartZone';
+        
+        closeModal('modal-profile');
+        openModal('modal-invoice-settings');
+    } catch(e) { toast(e.message, 'error'); }
+};
+
+document.getElementById('btn-save-invoice-settings').onclick = async () => {
+    const data = {
+        invoice_settings: {
+            header_title: document.getElementById('inv-set-title').value,
+            header_subtitle: document.getElementById('inv-set-subtitle').value,
+            header_contact: document.getElementById('inv-set-contact').value,
+            tax_invoice_text: document.getElementById('inv-set-tax').value,
+            label_bill_no: document.getElementById('inv-set-billno').value,
+            label_cashier: document.getElementById('inv-set-cashier').value,
+            label_customer: document.getElementById('inv-set-customer').value,
+            label_tel: document.getElementById('inv-set-tel').value,
+            label_item: document.getElementById('inv-set-item').value,
+            label_qty: document.getElementById('inv-set-qty').value,
+            label_amount: document.getElementById('inv-set-amt').value,
+            label_subtotal: document.getElementById('inv-set-subtotal').value,
+            label_total: document.getElementById('inv-set-total').value,
+            label_amount_paid: document.getElementById('inv-set-paid').value,
+            label_balance: document.getElementById('inv-set-bal').value,
+            footer_message1: document.getElementById('inv-set-msg1').value,
+            footer_message2: document.getElementById('inv-set-msg2').value,
+            footer_powered_by: document.getElementById('inv-set-powered').value
+        }
+    };
+    try {
+        const res = await fetch(API + '/auth/profile', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to update invoice settings');
+        toast('Invoice settings saved successfully');
+        closeModal('modal-invoice-settings');
     } catch(e) { toast(e.message, 'error'); }
 };
 

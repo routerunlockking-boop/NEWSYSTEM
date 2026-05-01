@@ -435,14 +435,43 @@
     
     <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border)">
         <h4 style="margin-bottom:12px;color:var(--primary)"><i class='bx bx-receipt'></i> Invoice Customization</h4>
-        <div class="form-group"><label>Header Title</label><input type="text" id="profile-inv-title" class="form-control" placeholder="E.g. SMARTZONE"></div>
-        <div class="form-group"><label>Header Subtitle / Address</label><input type="text" id="profile-inv-subtitle" class="form-control" placeholder="E.g. New Town Padaviya"></div>
-        <div class="form-group"><label>Header Contact</label><input type="text" id="profile-inv-contact" class="form-control" placeholder="E.g. Mobile: 078-68000 86"></div>
-        <div class="form-group"><label>Footer Message 1</label><input type="text" id="profile-inv-msg1" class="form-control" placeholder="E.g. Thank You! Come Again"></div>
-        <div class="form-group"><label>Footer Message 2 (Terms/Warranty)</label><textarea id="profile-inv-msg2" class="form-control" rows="2" placeholder="E.g. Please keep this receipt for warranty claims..."></textarea></div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Customize what is printed on your invoices.</p>
+        <button type="button" class="btn btn-outline btn-block" onclick="openInvoiceSettingsModal()">Open Invoice Settings</button>
     </div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-profile')">Cancel</button><button class="btn btn-primary" id="btn-save-profile"><i class='bx bx-check'></i> Save Profile</button></div>
+</div></div>
+
+<!-- Invoice Settings Modal -->
+<div class="modal-bg" id="modal-invoice-settings"><div class="modal"><div class="modal-head"><h3><i class='bx bx-cog' style="color:var(--primary)"></i> Invoice Settings</h3><button class="close-btn" onclick="closeModal('modal-invoice-settings')">&times;</button></div>
+<div class="modal-body"><form id="invoice-settings-form">
+    <div class="form-group"><label>Header Title</label><input type="text" id="inv-set-title" class="form-control" placeholder="E.g. SMARTZONE"></div>
+    <div class="form-row"><div class="form-group"><label>Header Subtitle</label><input type="text" id="inv-set-subtitle" class="form-control" placeholder="E.g. New Town Padaviya"></div>
+        <div class="form-group"><label>Header Contact</label><input type="text" id="inv-set-contact" class="form-control" placeholder="E.g. Mobile: 078-68000 86"></div></div>
+    
+    <div class="form-row"><div class="form-group"><label>Tax Invoice Text</label><input type="text" id="inv-set-tax" class="form-control" placeholder="E.g. Tax Invoice"></div>
+        <div class="form-group"><label>Bill No Label</label><input type="text" id="inv-set-billno" class="form-control" placeholder="E.g. Bill No:"></div></div>
+    
+    <div class="form-row"><div class="form-group"><label>Cashier Label</label><input type="text" id="inv-set-cashier" class="form-control" placeholder="E.g. Cashier:"></div>
+        <div class="form-group"><label>Customer Label</label><input type="text" id="inv-set-customer" class="form-control" placeholder="E.g. Customer:"></div></div>
+        
+    <div class="form-row"><div class="form-group"><label>Tel Label</label><input type="text" id="inv-set-tel" class="form-control" placeholder="E.g. Tel:"></div>
+        <div class="form-group"><label>Item Header</label><input type="text" id="inv-set-item" class="form-control" placeholder="E.g. Item"></div></div>
+        
+    <div class="form-row"><div class="form-group"><label>Qty Header</label><input type="text" id="inv-set-qty" class="form-control" placeholder="E.g. Qty"></div>
+        <div class="form-group"><label>Amount Header</label><input type="text" id="inv-set-amt" class="form-control" placeholder="E.g. Amount"></div></div>
+        
+    <div class="form-row"><div class="form-group"><label>Subtotal Label</label><input type="text" id="inv-set-subtotal" class="form-control" placeholder="E.g. Subtotal"></div>
+        <div class="form-group"><label>Total Label</label><input type="text" id="inv-set-total" class="form-control" placeholder="E.g. TOTAL"></div></div>
+        
+    <div class="form-row"><div class="form-group"><label>Amount Paid Label</label><input type="text" id="inv-set-paid" class="form-control" placeholder="E.g. Amount Paid"></div>
+        <div class="form-group"><label>Balance Label</label><input type="text" id="inv-set-bal" class="form-control" placeholder="E.g. Balance"></div></div>
+        
+    <div class="form-group"><label>Footer Message 1</label><input type="text" id="inv-set-msg1" class="form-control" placeholder="E.g. Thank You! Come Again"></div>
+    <div class="form-group"><label>Footer Message 2 (Terms/Warranty)</label><textarea id="inv-set-msg2" class="form-control" rows="2" placeholder="E.g. Please keep this receipt for warranty claims..."></textarea></div>
+    <div class="form-group"><label>Powered By Text</label><input type="text" id="inv-set-powered" class="form-control" placeholder="E.g. Powered by SmartZone"></div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-invoice-settings')">Cancel</button><button class="btn btn-primary" id="btn-save-invoice-settings"><i class='bx bx-check'></i> Save Settings</button></div>
 </div></div>
 
 <!-- Admin Edit User Modal -->

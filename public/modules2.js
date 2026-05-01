@@ -267,8 +267,21 @@ async function printReceipt(inv) {
         header_title: 'SMARTZONE',
         header_subtitle: 'New Town Padaviya, Anuradhapura',
         header_contact: 'Mobile: 078-68000 86',
+        tax_invoice_text: 'Tax Invoice',
+        label_bill_no: 'Bill No:',
+        label_cashier: 'Cashier:',
+        label_customer: 'Customer:',
+        label_tel: 'Tel:',
+        label_item: 'Item',
+        label_qty: 'Qty',
+        label_amount: 'Amount',
+        label_subtotal: 'Subtotal',
+        label_total: 'TOTAL',
+        label_amount_paid: 'Amount Paid',
+        label_balance: 'Balance',
         footer_message1: 'Thank You! Come Again',
-        footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.'
+        footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.',
+        footer_powered_by: 'Powered by SmartZone'
     };
     try {
         const res = await api('/auth/profile');
@@ -300,29 +313,29 @@ async function printReceipt(inv) {
                 <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
                 <p style="margin:0;font-size:11px;font-weight:500;">${invSettings.header_contact}</p>
                 <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
-                <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">Tax Invoice</h2>
+                <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
             </div>
             
             <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                    <span>Bill No: ${inv.invoice_number}</span>
+                    <span>${invSettings.label_bill_no} ${inv.invoice_number}</span>
                     <span>${inv.date}</span>
                 </div>
                 ${inv.cashier_name && inv.cashier_name !== 'System' ? `
-                <div style="margin-bottom:4px;">Cashier: <strong>${inv.cashier_name}</strong></div>` : ''}
+                <div style="margin-bottom:4px;">${invSettings.label_cashier} <strong>${inv.cashier_name}</strong></div>` : ''}
                 ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
                 <div style="margin-top:6px;">
-                    <div style="font-weight:700;">Customer: ${inv.customer_name}</div>
-                    ${inv.customer_phone ? `<div>Tel: ${inv.customer_phone}</div>` : ''}
+                    <div style="font-weight:700;">${invSettings.label_customer} ${inv.customer_name}</div>
+                    ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
                 </div>` : ''}
             </div>
             
             <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
             
             <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
-                <span style="width:55%;text-align:left">Item</span>
-                <span style="width:15%;text-align:center">Qty</span>
-                <span style="width:30%;text-align:right">Amount</span>
+                <span style="width:55%;text-align:left">${invSettings.label_item}</span>
+                <span style="width:15%;text-align:center">${invSettings.label_qty}</span>
+                <span style="width:30%;text-align:right">${invSettings.label_amount}</span>
             </div>
             
             <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
@@ -335,21 +348,21 @@ async function printReceipt(inv) {
             
             <div style="font-size:12px;margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                    <span>Subtotal</span>
+                    <span>${invSettings.label_subtotal}</span>
                     <span>${inv.total_amount.toFixed(2)}</span>
                 </div>
                 <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                 <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
-                    <span>TOTAL</span>
+                    <span>${invSettings.label_total}</span>
                     <span>${inv.total_amount.toFixed(2)}</span>
                 </div>
                 <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                 <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
-                    <span>Amount Paid</span>
+                    <span>${invSettings.label_amount_paid}</span>
                     <span>${paid.toFixed(2)}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
-                    <span>Balance</span>
+                    <span>${invSettings.label_balance}</span>
                     <span>${balance.toFixed(2)}</span>
                 </div>
             </div>
@@ -359,7 +372,7 @@ async function printReceipt(inv) {
             <div style="text-align:center;font-size:10px;margin-top:12px;">
                 <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${invSettings.footer_message1}</p>
                 <p style="margin:0 0 8px 0;line-height:1.3;">${invSettings.footer_message2}</p>
-                <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p>
+                <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">${invSettings.footer_powered_by}</p>
             </div>
         </div>
     `;
