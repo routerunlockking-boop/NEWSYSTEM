@@ -103,17 +103,26 @@ router.get('/cashiers', async (req, res) => {
         const requestingUser = await User.findById(token);
         if (!requestingUser) return res.status(401).json({ error: 'Unauthorized' });
 
-        const users = await User.find({ is_active: true }).select('business_name role email');
-        // Also include admin
-        const adminUser = await User.findOne({ role: 'admin' }).select('business_name role email');
-        const allCashiers = users.map(u => ({
-            id: u._id.toString(),
-            name: u.business_name,
-            role: u.role
-        }));
-        // Ensure admin is in the list if not already
-        if (adminUser && !allCashiers.find(c => c.id === adminUser._id.toString())) {
-            allCashiers.unshift({ id: adminUser._id.toString(), name: adminUser.business_name, role: adminUser.role });
+        let allCashiers = [];
+        if (requestingUser.role === 'admin') {
+            const users = await User.find({ is_active: true }).select('business_name role email');
+            const adminUser = await User.findOne({ role: 'admin' }).select('business_name role email');
+            allCashiers = users.map(u => ({
+                id: u._id.toString(),
+                name: u.business_name,
+                role: u.role
+            }));
+            // Ensure admin is in the list if not already
+            if (adminUser && !allCashiers.find(c => c.id === adminUser._id.toString())) {
+                allCashiers.unshift({ id: adminUser._id.toString(), name: adminUser.business_name, role: adminUser.role });
+            }
+        } else {
+            // Non-admins only see themselves
+            allCashiers = [{
+                id: requestingUser._id.toString(),
+                name: requestingUser.business_name,
+                role: requestingUser.role
+            }];
         }
         res.json(allCashiers);
     } catch (err) {
