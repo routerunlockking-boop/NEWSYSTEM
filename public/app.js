@@ -475,65 +475,225 @@ async function deleteSupplier(id) {
 
 // === INVOICE DESIGNER ===
 let invoiceTemplates = [];
+const DEFAULT_ORDER = ['header', 'invoice_info', 'people_info', 'items', 'totals', 'footer'];
+const DEFAULT_VIS = { header:true, invoice_info:true, people_info:true, items:true, totals:true, footer:true };
+const DEFAULT_LABELS = {
+    header_title: 'SMARTZONE', header_subtitle: 'New Town Padaviya, Anuradhapura', header_contact: 'Mobile: 078-68000 86', tax_text: 'Tax Invoice',
+    label_bill: 'Bill No:', label_date: 'Date:',
+    label_cashier: 'Cashier:', label_customer: 'Customer:', label_tel: 'Tel:',
+    label_item: 'Item', label_qty: 'Qty', label_amount: 'Amount',
+    label_subtotal: 'Subtotal', label_total: 'TOTAL', label_paid: 'Amount Paid', label_balance: 'Balance',
+    footer_msg1: 'Thank You! Come Again', footer_msg2: 'Please keep this receipt for warranty claims.'
+};
 
-function getSampleInvoiceData() {
-    return {
-        invoice_number: 'INV-1001',
-        date: new Date().toLocaleString(),
-        cashier_name: 'John Doe',
-        customer_name: 'Jane Smith',
-        customer_phone: '0712345678',
-        total_amount: 15000,
-        amount_paid: 15000,
-        itemsHtml: `
-            <div style="margin-bottom:6px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <span style="width:55%;word-break:break-word;padding-right:4px">Sample Router</span>
-                    <span style="width:15%;text-align:center">1</span>
-                    <span style="width:30%;text-align:right">15000.00</span>
-                </div>
-                <div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: 123456789012345</div>
-            </div>
-        `
+let currentOrder = [...DEFAULT_ORDER];
+let currentVis = {...DEFAULT_VIS};
+let currentLabels = {...DEFAULT_LABELS};
+
+function renderBuilderBlocks() {
+    const container = document.getElementById('builder-blocks');
+    container.innerHTML = '';
+    
+    const blockNames = {
+        header: 'Header (Store Info)',
+        invoice_info: 'Invoice Meta (Bill No & Date)',
+        people_info: 'People Info (Cashier & Customer)',
+        items: 'Items Table',
+        totals: 'Totals & Balance',
+        footer: 'Footer Messages'
     };
+
+    currentOrder.forEach((blockId, index) => {
+        const isVis = currentVis[blockId] !== false;
+        
+        let settingsHtml = '';
+        if (blockId === 'header') {
+            settingsHtml = `
+                <div class="form-group"><label>Title</label><input type="text" class="form-control" onchange="updateLabel('header_title', this.value)" value="${currentLabels.header_title}"></div>
+                <div class="form-group"><label>Subtitle</label><input type="text" class="form-control" onchange="updateLabel('header_subtitle', this.value)" value="${currentLabels.header_subtitle}"></div>
+                <div class="form-group"><label>Contact</label><input type="text" class="form-control" onchange="updateLabel('header_contact', this.value)" value="${currentLabels.header_contact}"></div>
+                <div class="form-group"><label>Tax Text</label><input type="text" class="form-control" onchange="updateLabel('tax_text', this.value)" value="${currentLabels.tax_text}"></div>
+            `;
+        } else if (blockId === 'invoice_info') {
+            settingsHtml = `
+                <div class="form-group"><label>Bill No Label</label><input type="text" class="form-control" onchange="updateLabel('label_bill', this.value)" value="${currentLabels.label_bill}"></div>
+                <div class="form-group"><label>Date Label</label><input type="text" class="form-control" onchange="updateLabel('label_date', this.value)" value="${currentLabels.label_date}"></div>
+            `;
+        } else if (blockId === 'people_info') {
+            settingsHtml = `
+                <div class="form-group"><label>Cashier Label</label><input type="text" class="form-control" onchange="updateLabel('label_cashier', this.value)" value="${currentLabels.label_cashier}"></div>
+                <div class="form-group"><label>Customer Label</label><input type="text" class="form-control" onchange="updateLabel('label_customer', this.value)" value="${currentLabels.label_customer}"></div>
+                <div class="form-group"><label>Tel Label</label><input type="text" class="form-control" onchange="updateLabel('label_tel', this.value)" value="${currentLabels.label_tel}"></div>
+            `;
+        } else if (blockId === 'items') {
+            settingsHtml = `
+                <div style="display:flex;gap:5px;">
+                    <div class="form-group"><label>Item</label><input type="text" class="form-control" onchange="updateLabel('label_item', this.value)" value="${currentLabels.label_item}"></div>
+                    <div class="form-group"><label>Qty</label><input type="text" class="form-control" onchange="updateLabel('label_qty', this.value)" value="${currentLabels.label_qty}"></div>
+                    <div class="form-group"><label>Amount</label><input type="text" class="form-control" onchange="updateLabel('label_amount', this.value)" value="${currentLabels.label_amount}"></div>
+                </div>
+            `;
+        } else if (blockId === 'totals') {
+            settingsHtml = `
+                <div style="display:flex;gap:5px;">
+                    <div class="form-group"><label>Subtotal</label><input type="text" class="form-control" onchange="updateLabel('label_subtotal', this.value)" value="${currentLabels.label_subtotal}"></div>
+                    <div class="form-group"><label>TOTAL</label><input type="text" class="form-control" onchange="updateLabel('label_total', this.value)" value="${currentLabels.label_total}"></div>
+                </div>
+                <div style="display:flex;gap:5px;">
+                    <div class="form-group"><label>Paid</label><input type="text" class="form-control" onchange="updateLabel('label_paid', this.value)" value="${currentLabels.label_paid}"></div>
+                    <div class="form-group"><label>Balance</label><input type="text" class="form-control" onchange="updateLabel('label_balance', this.value)" value="${currentLabels.label_balance}"></div>
+                </div>
+            `;
+        } else if (blockId === 'footer') {
+            settingsHtml = `
+                <div class="form-group"><label>Message 1</label><input type="text" class="form-control" onchange="updateLabel('footer_msg1', this.value)" value="${currentLabels.footer_msg1}"></div>
+                <div class="form-group"><label>Message 2</label><input type="text" class="form-control" onchange="updateLabel('footer_msg2', this.value)" value="${currentLabels.footer_msg2}"></div>
+            `;
+        }
+
+        const blockEl = document.createElement('div');
+        blockEl.style.border = '1px solid #eee';
+        blockEl.style.borderRadius = '6px';
+        blockEl.style.overflow = 'hidden';
+        
+        blockEl.innerHTML = `
+            <div style="background:#f8fafc;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <div style="display:flex;align-items:center;gap:10px" onclick="toggleSettings('${blockId}')">
+                    <i class='bx bx-dots-vertical-rounded' style="color:#aaa"></i>
+                    <span style="font-weight:600;font-size:13px;color:${isVis?'#333':'#aaa'}">${blockNames[blockId]}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                    <button class="btn btn-sm btn-outline" style="padding:2px 5px" onclick="moveBlock(${index}, -1)" ${index===0?'disabled':''}><i class='bx bx-up-arrow-alt'></i></button>
+                    <button class="btn btn-sm btn-outline" style="padding:2px 5px" onclick="moveBlock(${index}, 1)" ${index===currentOrder.length-1?'disabled':''}><i class='bx bx-down-arrow-alt'></i></button>
+                    <button class="btn btn-sm ${isVis?'btn-primary':'btn-outline'}" style="padding:2px 5px" onclick="toggleVis('${blockId}')"><i class='bx ${isVis?'bx-show':'bx-hide'}'></i></button>
+                </div>
+            </div>
+            <div id="settings-${blockId}" style="display:none;padding:10px;background:#fff;border-top:1px solid #eee">
+                ${settingsHtml}
+            </div>
+        `;
+        container.appendChild(blockEl);
+    });
 }
 
+window.toggleSettings = function(id) {
+    const el = document.getElementById(`settings-${id}`);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+window.updateLabel = function(key, val) {
+    currentLabels[key] = val;
+    updateLivePreview();
+};
+
+window.moveBlock = function(idx, dir) {
+    if (idx + dir < 0 || idx + dir >= currentOrder.length) return;
+    const temp = currentOrder[idx];
+    currentOrder[idx] = currentOrder[idx + dir];
+    currentOrder[idx + dir] = temp;
+    renderBuilderBlocks();
+    updateLivePreview();
+};
+
+window.toggleVis = function(id) {
+    currentVis[id] = currentVis[id] === false ? true : false;
+    renderBuilderBlocks();
+    updateLivePreview();
+};
+
 function updateLivePreview() {
-    const html = document.getElementById('tpl-html').value;
-    const s = getSampleInvoiceData();
-    let previewHtml = html
-        .replace(/{{business_name}}/g, bizName || 'SMARTZONE')
-        .replace(/{{business_address}}/g, 'Sample Address')
-        .replace(/{{business_contact}}/g, 'Sample Contact')
-        .replace(/{{invoice_number}}/g, s.invoice_number)
-        .replace(/{{date}}/g, s.date)
-        .replace(/{{cashier_name}}/g, s.cashier_name)
-        .replace(/{{customer_name}}/g, s.customer_name)
-        .replace(/{{customer_phone}}/g, s.customer_phone)
-        .replace(/{{items_html}}/g, s.itemsHtml)
-        .replace(/{{total_amount}}/g, s.total_amount.toFixed(2))
-        .replace(/{{amount_paid}}/g, s.amount_paid.toFixed(2))
-        .replace(/{{balance}}/g, '0.00');
+    let previewHtml = '';
+    
+    currentOrder.forEach(blockId => {
+        if (currentVis[blockId] === false) return;
+        
+        if (blockId === 'header') {
+            previewHtml += `
+                <div style="text-align:center;margin-bottom:12px;">
+                    <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">${currentLabels.header_title}</h1>
+                    <p style="margin:2px 0;font-size:11px;font-weight:500;">${currentLabels.header_subtitle}</p>
+                    <p style="margin:0;font-size:11px;font-weight:500;">${currentLabels.header_contact}</p>
+                    <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                    <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${currentLabels.tax_text}</h2>
+                </div>
+            `;
+        } else if (blockId === 'invoice_info') {
+            previewHtml += `
+                <div style="font-size:11px;font-weight:500;display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>${currentLabels.label_bill} INV-1001</span>
+                    <span>${currentLabels.label_date} 2026-05-01</span>
+                </div>
+            `;
+        } else if (blockId === 'people_info') {
+            previewHtml += `
+                <div style="font-size:11px;font-weight:500;margin-bottom:8px;">
+                    <div style="margin-bottom:4px;">${currentLabels.label_cashier} <strong>John Doe</strong></div>
+                    <div style="margin-top:6px;">
+                        <div style="font-weight:700;">${currentLabels.label_customer} Jane Smith</div>
+                        <div>${currentLabels.label_tel} 0712345678</div>
+                    </div>
+                </div>
+            `;
+        } else if (blockId === 'items') {
+            previewHtml += `
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                    <span style="width:55%;">${currentLabels.label_item}</span>
+                    <span style="width:15%;text-align:center">${currentLabels.label_qty}</span>
+                    <span style="width:30%;text-align:right">${currentLabels.label_amount}</span>
+                </div>
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                <div style="font-size:11px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                        <span style="width:55%;">Sample Router</span><span style="width:15%;text-align:center">1</span><span style="width:30%;text-align:right">15000.00</span>
+                    </div>
+                </div>
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            `;
+        } else if (blockId === 'totals') {
+            previewHtml += `
+                <div style="font-size:12px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${currentLabels.label_subtotal}</span><span>15000.00</span></div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${currentLabels.label_total}</span><span>15000.00</span></div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;"><span>${currentLabels.label_paid}</span><span>15000.00</span></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>${currentLabels.label_balance}</span><span>0.00</span></div>
+                </div>
+                <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+            `;
+        } else if (blockId === 'footer') {
+            previewHtml += `
+                <div style="text-align:center;font-size:10px;margin-top:12px;">
+                    <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${currentLabels.footer_msg1}</p>
+                    <p style="margin:0 0 8px 0;line-height:1.3;">${currentLabels.footer_msg2}</p>
+                </div>
+            `;
+        }
+    });
 
     previewHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
-    
     document.getElementById('tpl-preview').innerHTML = `<div style="width:100%;max-width:80mm;margin:0 auto;font-family:sans-serif;color:#000">${previewHtml}</div>`;
 }
 
 function setupDesigner() {
-    document.getElementById('tpl-html').addEventListener('input', updateLivePreview);
-    
     document.getElementById('template-select').addEventListener('change', (e) => {
         const t = invoiceTemplates.find(x => x._id === e.target.value);
         if (t) {
             document.getElementById('tpl-id').value = t._id;
             document.getElementById('tpl-name').value = t.name;
-            document.getElementById('tpl-html').value = t.html_content;
+            currentOrder = Array.isArray(t.order) && t.order.length ? [...t.order] : [...DEFAULT_ORDER];
+            currentVis = t.visibility ? {...t.visibility} : {...DEFAULT_VIS};
+            currentLabels = t.labels ? {...DEFAULT_LABELS, ...t.labels} : {...DEFAULT_LABELS};
+            renderBuilderBlocks();
             updateLivePreview();
         } else {
             document.getElementById('tpl-id').value = '';
             document.getElementById('tpl-name').value = '';
-            document.getElementById('tpl-html').value = '';
+            currentOrder = [...DEFAULT_ORDER];
+            currentVis = {...DEFAULT_VIS};
+            currentLabels = {...DEFAULT_LABELS};
+            renderBuilderBlocks();
             updateLivePreview();
         }
     });
@@ -542,26 +702,35 @@ function setupDesigner() {
         document.getElementById('template-select').value = '';
         document.getElementById('tpl-id').value = '';
         document.getElementById('tpl-name').value = '';
-        document.getElementById('tpl-html').value = `<div style="text-align:center;margin-bottom:12px;">\n  <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">{{business_name}}</h1>\n  <p style="margin:2px 0;font-size:11px;font-weight:500;">{{business_address}}</p>\n</div>\n\n<div style="font-size:11px;font-weight:500;margin-bottom:10px;">\n  Bill No: {{invoice_number}}<br>\n  Date: {{date}}<br>\n  Cashier: {{cashier_name}}\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">\n  <span style="width:55%;">Item</span>\n  <span style="width:15%;text-align:center">Qty</span>\n  <span style="width:30%;text-align:right">Amount</span>\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="font-size:11px;margin-bottom:10px;">\n  {{items_html}}\n</div>\n\n<div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>\n\n<div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">\n  <span>TOTAL</span>\n  <span>{{total_amount}}</span>\n</div>`;
+        currentOrder = [...DEFAULT_ORDER];
+        currentVis = {...DEFAULT_VIS};
+        currentLabels = {...DEFAULT_LABELS};
+        renderBuilderBlocks();
         updateLivePreview();
     };
 
     document.getElementById('btn-save-template').onclick = async () => {
         const id = document.getElementById('tpl-id').value;
         const name = document.getElementById('tpl-name').value.trim();
-        const html = document.getElementById('tpl-html').value.trim();
-        if (!name || !html) return toast('Name and HTML are required', 'error');
+        if (!name) return toast('Template name required', 'error');
         
         let newTemplates = [...invoiceTemplates];
         if (id) {
             const idx = newTemplates.findIndex(t => t._id === id);
             if (idx > -1) {
                 newTemplates[idx].name = name;
-                newTemplates[idx].html_content = html;
+                newTemplates[idx].order = [...currentOrder];
+                newTemplates[idx].visibility = {...currentVis};
+                newTemplates[idx].labels = {...currentLabels};
             }
         } else {
-            // New template: assign a random ID for now, will be replaced by backend next fetch
-            newTemplates.push({ _id: Date.now().toString(), name, html_content: html, is_active: newTemplates.length === 0 });
+            newTemplates.push({ 
+                name, 
+                order: [...currentOrder], 
+                visibility: {...currentVis}, 
+                labels: {...currentLabels},
+                is_active: newTemplates.length === 0 
+            });
         }
         
         try {
@@ -611,11 +780,13 @@ async function loadInvoiceDesigner() {
         sel.innerHTML = '<option value="">-- Select Template --</option>' + 
             invoiceTemplates.map(t => `<option value="${t._id}">${t.name} ${t.is_active ? '(Active)' : ''}</option>`).join('');
             
-        // If there's an active template, select it by default if nothing is selected
         const active = invoiceTemplates.find(t => t.is_active);
         if (active && !document.getElementById('tpl-id').value) {
             sel.value = active._id;
             sel.dispatchEvent(new Event('change'));
+        } else {
+            renderBuilderBlocks();
+            updateLivePreview();
         }
     } catch(e) { console.error(e); }
 }

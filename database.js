@@ -56,9 +56,12 @@ const UserSchema = new mongoose.Schema({
         footer_powered_by: { type: String, default: 'Powered by SmartZone' }
     },
     invoice_templates: [{
+        _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
         name: { type: String, required: true },
         is_active: { type: Boolean, default: false },
-        html_content: { type: String, required: true }
+        order: { type: [String], default: ['header', 'invoice_info', 'people_info', 'items', 'totals', 'footer'] },
+        visibility: { type: mongoose.Schema.Types.Mixed, default: {} },
+        labels: { type: mongoose.Schema.Types.Mixed, default: {} }
     }]
 });
 

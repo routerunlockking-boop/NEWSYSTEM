@@ -283,20 +283,18 @@ async function printReceipt(inv) {
         footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.',
         footer_powered_by: 'Powered by SmartZone'
     };
-    let activeTemplateHtml = null;
+    let activeTemplate = null;
     try {
         const res = await api('/auth/profile');
         if (res && res.ok) {
             const p = await res.json();
             if (p.invoice_settings) invSettings = { ...invSettings, ...p.invoice_settings };
             if (p.invoice_templates) {
-                const active = p.invoice_templates.find(t => t.is_active);
-                if (active) activeTemplateHtml = active.html_content;
+                activeTemplate = p.invoice_templates.find(t => t.is_active);
             }
         }
     } catch(e) { console.warn('Could not load profile settings', e); }
 
-    // Calculate balance
     const paid = inv.amount_paid || 0;
     const balance = paid > 0 ? (paid - inv.total_amount) : 0;
 
@@ -313,20 +311,75 @@ async function printReceipt(inv) {
 
     let finalHtml = '';
     
-    if (activeTemplateHtml) {
-        finalHtml = activeTemplateHtml
-            .replace(/{{business_name}}/g, invSettings.header_title || 'SMARTZONE')
-            .replace(/{{business_address}}/g, invSettings.header_subtitle || '')
-            .replace(/{{business_contact}}/g, invSettings.header_contact || '')
-            .replace(/{{invoice_number}}/g, inv.invoice_number)
-            .replace(/{{date}}/g, inv.date)
-            .replace(/{{cashier_name}}/g, inv.cashier_name || '')
-            .replace(/{{customer_name}}/g, inv.customer_name || 'Walk-in')
-            .replace(/{{customer_phone}}/g, inv.customer_phone || '')
-            .replace(/{{items_html}}/g, itemsHtml)
-            .replace(/{{total_amount}}/g, inv.total_amount.toFixed(2))
-            .replace(/{{amount_paid}}/g, paid.toFixed(2))
-            .replace(/{{balance}}/g, balance.toFixed(2));
+    if (activeTemplate) {
+        const order = activeTemplate.order || ['header', 'invoice_info', 'people_info', 'items', 'totals', 'footer'];
+        const vis = activeTemplate.visibility || {};
+        const labels = activeTemplate.labels || {};
+        
+        order.forEach(blockId => {
+            if (vis[blockId] === false) return;
+            
+            if (blockId === 'header') {
+                finalHtml += `
+                    <div style="text-align:center;margin-bottom:12px;">
+                        <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">${labels.header_title || ''}</h1>
+                        <p style="margin:2px 0;font-size:11px;font-weight:500;">${labels.header_subtitle || ''}</p>
+                        <p style="margin:0;font-size:11px;font-weight:500;">${labels.header_contact || ''}</p>
+                        <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                        <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${labels.tax_text || ''}</h2>
+                    </div>
+                `;
+            } else if (blockId === 'invoice_info') {
+                finalHtml += `
+                    <div style="font-size:11px;font-weight:500;display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${labels.label_bill || ''} ${inv.invoice_number}</span>
+                        <span>${labels.label_date || ''} ${inv.date}</span>
+                    </div>
+                `;
+            } else if (blockId === 'people_info') {
+                finalHtml += `<div style="font-size:11px;font-weight:500;margin-bottom:8px;">`;
+                if (inv.cashier_name && inv.cashier_name !== 'System') {
+                    finalHtml += `<div style="margin-bottom:4px;">${labels.label_cashier || ''} <strong>${inv.cashier_name}</strong></div>`;
+                }
+                if (inv.customer_name && inv.customer_name !== 'Walk-in') {
+                    finalHtml += `<div style="margin-top:6px;"><div style="font-weight:700;">${labels.label_customer || ''} ${inv.customer_name}</div>`;
+                    if (inv.customer_phone) finalHtml += `<div>${labels.label_tel || ''} ${inv.customer_phone}</div>`;
+                    finalHtml += `</div>`;
+                }
+                finalHtml += `</div>`;
+            } else if (blockId === 'items') {
+                finalHtml += `
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                        <span style="width:55%;text-align:left">${labels.label_item || ''}</span>
+                        <span style="width:15%;text-align:center">${labels.label_qty || ''}</span>
+                        <span style="width:30%;text-align:right">${labels.label_amount || ''}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                    <div style="font-size:11px;margin-bottom:10px;">${itemsHtml}</div>
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                `;
+            } else if (blockId === 'totals') {
+                finalHtml += `
+                    <div style="font-size:12px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                        <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;"><span>${labels.label_paid || ''}</span><span>${paid.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>${labels.label_balance || ''}</span><span>${balance.toFixed(2)}</span></div>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+                `;
+            } else if (blockId === 'footer') {
+                finalHtml += `
+                    <div style="text-align:center;font-size:10px;margin-top:12px;">
+                        <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${labels.footer_msg1 || ''}</p>
+                        <p style="margin:0 0 8px 0;line-height:1.3;">${labels.footer_msg2 || ''}</p>
+                    </div>
+                `;
+            }
+        });
             
         finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
         pa.innerHTML = `<div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">${finalHtml}</div>`;
