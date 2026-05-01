@@ -4,6 +4,17 @@ const { ImeiItem, Product } = require('../database');
 const { sendStatusEmail } = require('../utils/email');
 const { sendSMS } = require('../utils/sms');
 
+// Helper to strictly synchronize Product stock count with actual "In Stock" IMEI items
+async function syncProductStock(product_id) {
+    if (!product_id) return;
+    try {
+        const count = await ImeiItem.countDocuments({ product_id: product_id, status: 'In Stock' });
+        await Product.findByIdAndUpdate(product_id, { quantity: count });
+    } catch (err) {
+        console.error('Error syncing stock:', err);
+    }
+}
+
 // Get all IMEI items with optional filters
 router.get('/', async (req, res) => {
     try {
@@ -126,8 +137,8 @@ router.post('/', async (req, res) => {
             results.push(item);
         }
 
-        // Update product quantity
-        await Product.findByIdAndUpdate(product_id, { $inc: { quantity: results.length } });
+        // Synchronize product quantity
+        await syncProductStock(product_id);
 
         res.status(201).json({
             message: `${results.length} IMEI items added successfully`,
@@ -160,12 +171,8 @@ router.put('/:id/status', async (req, res) => {
 
         await item.save();
 
-        // Adjust product stock if moving in/out of "In Stock" status
-        if (oldStatus === 'In Stock' && status !== 'In Stock') {
-            await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: -1 } });
-        } else if (oldStatus !== 'In Stock' && status === 'In Stock') {
-            await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: 1 } });
-        }
+        // Synchronize product quantity to exact "In Stock" count
+        await syncProductStock(item.product_id);
 
         // Send email notification if requested
         if (send_email && item.customer_email) {
@@ -235,8 +242,8 @@ router.put('/:id/sell', async (req, res) => {
 
         await item.save();
 
-        // Decrement product stock
-        await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: -1 } });
+        // Synchronize product stock
+        await syncProductStock(item.product_id);
 
         res.json({ message: 'IMEI marked as sold', item });
     } catch (err) {
@@ -249,9 +256,10 @@ router.delete('/:id', async (req, res) => {
     try {
         const item = await ImeiItem.findByIdAndDelete(req.params.id);
         if (!item) return res.status(404).json({ error: 'IMEI item not found' });
-        if (item.status === 'In Stock') {
-            await Product.findByIdAndUpdate(item.product_id, { $inc: { quantity: -1 } });
-        }
+        
+        // Synchronize product stock
+        await syncProductStock(item.product_id);
+        
         res.json({ message: 'IMEI item deleted' });
     } catch (err) {
         return res.status(500).json({ error: err.message });

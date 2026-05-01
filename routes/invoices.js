@@ -2,6 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { Invoice, Product, ImeiItem, Customer } = require('../database');
 
+// Helper to strictly synchronize Product stock count with actual "In Stock" IMEI items
+async function syncProductStock(product_id) {
+    if (!product_id) return;
+    try {
+        const count = await ImeiItem.countDocuments({ product_id: product_id, status: 'In Stock' });
+        await Product.findByIdAndUpdate(product_id, { quantity: count });
+    } catch (err) {
+        console.error('Error syncing stock:', err);
+    }
+}
+
 // Get invoices
 router.get('/', async (req, res) => {
     const { date, month } = req.query;
@@ -164,7 +175,7 @@ router.post('/', async (req, res) => {
                     });
 
                     await imeiItem.save();
-                    await Product.findByIdAndUpdate(imeiItem.product_id, { $inc: { quantity: -1 } });
+                    await syncProductStock(imeiItem.product_id);
                 }
             }
         }
