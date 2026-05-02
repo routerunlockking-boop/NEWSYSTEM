@@ -434,7 +434,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     
     .barcode-sticker {
         width: 60mm;
-        height: 35mm;
+        height: 45mm;
         border: 1px solid #eee; /* Light border for cutting guidance */
         padding: 5mm;
         display: flex;
@@ -446,7 +446,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     }
     
     .barcode-sticker .sticker-name {
-        font-size: 10pt;
+        font-size: 11pt;
         font-weight: bold;
         margin-bottom: 2mm;
         white-space: nowrap;
@@ -457,7 +457,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     
     .barcode-sticker svg {
         width: 100%;
-        max-height: 20mm;
+        max-height: 25mm;
     }
     
     .barcode-sticker .sticker-price {
