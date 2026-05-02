@@ -463,10 +463,10 @@ async function printReceipt(inv) {
         });
             
         finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
-        pa.innerHTML = `<div style="width:100%; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
+        pa.innerHTML = `<div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
     } else {
         pa.innerHTML = `
-            <div style="width:100%;">
+            <div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">
                 <div style="text-align:center;margin-bottom:15px;">
                     <h1 style="margin:0;font-size:28px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
                     <p style="margin:4px 0;font-size:13px;font-weight:600;">${invSettings.header_subtitle}</p>
