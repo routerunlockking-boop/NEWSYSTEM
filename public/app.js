@@ -928,11 +928,11 @@ function printBarcodes() {
     const size = document.getElementById('barcode-cfg-size').value;
     localStorage.setItem('barcode_cfg_size', size);
 
-    // Map presets to dimensions for perfect scannability
+    // Optimized presets for scannability
     const presets = {
-        small:  { w: 48, h: 28, scale: 1.4, font: 9, svgH: 55 },
-        medium: { w: 48, h: 38, scale: 1.6, font: 10, svgH: 80 },
-        large:  { w: 65, h: 48, scale: 1.9, font: 12, svgH: 100 }
+        small:  { w: 48, h: 28, barW: 1, barH: 40, font: 8 },
+        medium: { w: 48, h: 38, barW: 2, barH: 60, font: 10 },
+        large:  { w: 65, h: 48, barW: 2, barH: 80, font: 12 }
     };
     const cfg = presets[size];
 
@@ -948,34 +948,37 @@ function printBarcodes() {
             sticker.style.width = `${cfg.w}mm`;
             sticker.style.height = `${cfg.h}mm`;
             
-            const svgId = `barcode-print-${item.id}-${i}-${Math.random().toString(36).substr(2, 5)}`;
+            const canvasId = `bc-${item.id.substr(-4)}-${i}-${Math.floor(Math.random()*1000)}`;
             
             sticker.innerHTML = `
-                <div class="sticker-name" style="font-size:${cfg.font}pt; margin-bottom:1mm">${item.name}</div>
-                <svg id="${svgId}"></svg>
-                <div class="sticker-price" style="font-size:${cfg.font - 1}pt; margin-top:1mm">Rs. ${(item.price || 0).toFixed(2)}</div>
+                <div class="sticker-name" style="font-size:${cfg.font}pt; font-weight:bold; margin-bottom:1mm">${item.name}</div>
+                <canvas id="${canvasId}" style="max-width:100%; height:auto;"></canvas>
+                <div class="sticker-price" style="font-size:${cfg.font}pt; font-weight:bold; margin-top:1mm">Rs. ${(item.price || 0).toFixed(2)}</div>
             `;
             
             printArea.appendChild(sticker);
-            renderTasks.push({ id: svgId, code: item.barcode });
+            renderTasks.push({ id: canvasId, code: item.barcode });
         }
     });
 
-    // Render all barcodes
+    // Render barcodes on canvases
     setTimeout(() => {
         renderTasks.forEach(task => {
             try {
-                JsBarcode(`#${task.id}`, task.code, {
-                    format: "CODE128",
-                    width: cfg.scale,
-                    height: cfg.svgH,
-                    displayValue: true,
-                    fontSize: 14,
-                    margin: 4, // Essential "Quiet Zone" for scanners
-                    background: "#ffffff",
-                    lineColor: "#000000"
-                });
-            } catch(e) { console.error("Barcode generation failed", e); }
+                const canvas = document.getElementById(task.id);
+                if (canvas) {
+                    JsBarcode(canvas, task.code, {
+                        format: "CODE128",
+                        width: cfg.barW,
+                        height: cfg.barH,
+                        displayValue: true,
+                        fontSize: 14,
+                        margin: 10,
+                        background: "#ffffff",
+                        lineColor: "#000000"
+                    });
+                }
+            } catch(e) { console.error("JsBarcode error:", e); }
         });
 
         setTimeout(() => {
@@ -987,5 +990,5 @@ function printBarcodes() {
                 document.body.classList.remove('size-large');
             }, 1000);
         }, 500);
-    }, 100);
+    }, 200);
 }
