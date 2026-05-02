@@ -38,7 +38,18 @@ router.get('/next-barcode', async (req, res) => {
             const num = parseInt(p.barcode);
             if (!isNaN(num) && num > maxNum) maxNum = num;
         });
-        const nextBarcode = (maxNum + 1).toString().padStart(3, '0');
+        
+        let candidate = maxNum + 1;
+        let nextBarcode = candidate.toString().padStart(3, '0');
+        
+        // Safety check: ensure it doesn't collide with ANY existing barcode (even if not strictly sequential)
+        let exists = await Product.findOne({ user_id: req.user._id, barcode: nextBarcode });
+        while (exists) {
+            candidate++;
+            nextBarcode = candidate.toString().padStart(3, '0');
+            exists = await Product.findOne({ user_id: req.user._id, barcode: nextBarcode });
+        }
+        
         res.json({ nextBarcode });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -66,18 +77,27 @@ router.post('/', async (req, res) => {
     const isImei = String(is_imei_tracked) === 'true';
     if (!isImei && (!barcode || barcode.trim() === '')) {
         try {
-            // Find all numeric barcodes for this user to calculate the next sequence
             const existingBarcodes = await Product.find({ user_id: req.user._id, barcode: /^\d+$/ }).select('barcode');
             let maxNum = 0;
             existingBarcodes.forEach(p => {
                 const num = parseInt(p.barcode);
                 if (!isNaN(num) && num > maxNum) maxNum = num;
             });
-            barcode = (maxNum + 1).toString().padStart(3, '0');
+            let candidate = maxNum + 1;
+            barcode = candidate.toString().padStart(3, '0');
+            let collides = await Product.findOne({ user_id: req.user._id, barcode });
+            while (collides) {
+                candidate++;
+                barcode = candidate.toString().padStart(3, '0');
+                collides = await Product.findOne({ user_id: req.user._id, barcode });
+            }
         } catch (e) {
-            console.error('Barcode generation error:', e);
             barcode = '001';
         }
+    } else if (barcode && barcode.trim() !== '') {
+        // Validation: Check if manually entered barcode exists
+        const exists = await Product.findOne({ user_id: req.user._id, barcode: barcode.trim() });
+        if (exists) return res.status(400).json({ error: 'This barcode is already assigned to another product' });
     }
 
     try {
@@ -107,6 +127,12 @@ router.put('/:id', async (req, res) => {
     const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
     try {
         const qf = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, user_id: req.user._id };
+        
+        // Validation: Check if updated barcode collides with another product
+        if (barcode && barcode.trim() !== '') {
+            const collision = await Product.findOne({ user_id: req.user._id, barcode: barcode.trim(), _id: { $ne: req.params.id } });
+            if (collision) return res.status(400).json({ error: 'This barcode is already assigned to another product' });
+        }
         const updateData = {
             name, barcode: barcode || '', cost_price: cost_price || 0, price, image,
             category: category || 'General',
