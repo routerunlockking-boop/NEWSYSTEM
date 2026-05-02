@@ -424,26 +424,26 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     
     body.printing-barcodes #print-area {
         display: grid !important;
-        position: absolute; left: 0; top: 0; width: 200mm; /* Increased width to utilize A4 */
-        grid-template-columns: repeat(4, 1fr); /* Default 4 per row */
-        gap: 2mm; /* Reduced gap as requested */
-        padding: 5mm;
+        position: absolute; left: 0; top: 0; width: 200mm;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1mm; /* Extremely tight gap to fit more rows */
+        padding: 5mm 0;
         background: white;
         visibility: visible !important;
     }
     
     body.printing-barcodes.size-large #print-area {
-        grid-template-columns: repeat(3, 1fr); /* Large size uses 3 per row */
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .barcode-sticker {
         /* Dimensions set dynamically in JS */
-        border: 1px solid #eee; /* Light border for cutting guidance */
-        padding: 2mm;
+        border: 0.1mm solid #eee; /* Hairline border */
+        padding: 1mm; /* Minimal padding to maximize barcode size */
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between; /* Space out items */
         text-align: center;
         page-break-inside: avoid;
         background: white;

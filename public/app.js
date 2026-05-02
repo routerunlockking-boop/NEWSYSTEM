@@ -930,9 +930,9 @@ function printBarcodes() {
 
     // Map presets to dimensions
     const presets = {
-        small:  { w: 48, h: 28, scale: 1.6, font: 9, svgH: 40 },
-        medium: { w: 48, h: 38, scale: 2.0, font: 10, svgH: 60 },
-        large:  { w: 65, h: 48, scale: 2.4, font: 12, svgH: 80 }
+        small:  { w: 48, h: 28, scale: 2.0, font: 9, svgH: 65 },
+        medium: { w: 48, h: 38, scale: 2.2, font: 10, svgH: 85 },
+        large:  { w: 65, h: 48, scale: 2.6, font: 12, svgH: 110 }
     };
     const cfg = presets[size];
 
@@ -951,9 +951,9 @@ function printBarcodes() {
             const svgId = `barcode-print-${item.id}-${i}-${Math.random().toString(36).substr(2, 5)}`;
             
             sticker.innerHTML = `
-                <div class="sticker-name" style="font-size:${cfg.font}pt">${item.name}</div>
-                <svg id="${svgId}"></svg>
-                <div class="sticker-price" style="font-size:${cfg.font - 1}pt">Rs. ${(item.price || 0).toFixed(2)}</div>
+                <div class="sticker-name" style="font-size:${cfg.font}pt; margin-bottom:0">${item.name}</div>
+                <svg id="${svgId}" style="margin: 0;"></svg>
+                <div class="sticker-price" style="font-size:${cfg.font - 1}pt; margin-top:0">Rs. ${(item.price || 0).toFixed(2)}</div>
             `;
             
             printArea.appendChild(sticker);
@@ -970,8 +970,8 @@ function printBarcodes() {
                     width: cfg.scale,
                     height: cfg.svgH,
                     displayValue: true,
-                    fontSize: 14,
-                    margin: 5,
+                    fontSize: 15,
+                    margin: 0, // Removed margin to maximize barcode size
                     background: "#ffffff"
                 });
             } catch(e) { console.error("Barcode generation failed", e); }
