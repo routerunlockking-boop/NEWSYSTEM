@@ -275,6 +275,7 @@ function setupNav() {
             if(target==='design-view') loadInvoiceDesigner();
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
+            if(target==='barcode-view') loadBarcodePrinter();
             if(target==='slt-view') { /* ready for generate */ }
         };
     });
@@ -791,11 +792,124 @@ async function loadInvoiceDesigner() {
     } catch(e) { console.error(e); }
 }
 
+// === BARCODE PRINTER ===
+async function loadBarcodePrinter() {
+    const search = document.getElementById('barcode-search')?.value.toLowerCase() || '';
+    try {
+        const res = await api('/products?lite=true');
+        if (!res) return;
+        const allProducts = await res.json();
+        const filtered = allProducts.filter(p => 
+            p.name.toLowerCase().includes(search) || 
+            p.barcode.toLowerCase().includes(search)
+        );
+
+        const tb = document.querySelector('#barcode-print-table tbody');
+        if (tb) {
+            tb.innerHTML = filtered.map(p => `<tr>
+                <td><strong>${p.name}</strong></td>
+                <td><code style="background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-size:12px">${p.barcode || 'NO BARCODE'}</code></td>
+                <td>${p.category}</td>
+                <td>Rs. ${p.price.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="printBarcodeA4('${p.name.replace(/'/g, "\\'")}', '${p.barcode}', ${p.price})" ${!p.barcode ? 'disabled' : ''}>
+                        <i class='bx bx-printer'></i> Print A4
+                    </button>
+                </td>
+            </tr>`).join('');
+        }
+    } catch(e) { console.error(e); }
+}
+
+function setupBarcodePrinter() {
+    const searchInput = document.getElementById('barcode-search');
+    if (searchInput) {
+        searchInput.onkeyup = loadBarcodePrinter;
+    }
+}
+
+window.printBarcodeA4 = function(name, barcode, price) {
+    if (!barcode) return toast('No barcode for this product', 'error');
+    
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Barcode Print - ${name}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+            <style>
+                @page { size: A4; margin: 10mm; }
+                body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: #000; }
+                .grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(4, 1fr); 
+                    gap: 10mm 5mm; 
+                    padding: 5mm;
+                }
+                .label {
+                    border: 0.2px solid #ddd;
+                    padding: 8px;
+                    text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 28mm;
+                    page-break-inside: avoid;
+                    border-radius: 4px;
+                }
+                .name { font-size: 9px; font-weight: 700; margin-bottom: 2px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .price { font-size: 10px; font-weight: 800; margin-top: 2px; }
+                .barcode-svg { width: 100%; height: auto; max-height: 14mm; }
+            </style>
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+        </head>
+        <body>
+            <div class="grid">
+                ${Array(40).fill(0).map((_, i) => `
+                    <div class="label">
+                        <div class="name">${name}</div>
+                        <svg id="barcode-${i}" class="barcode-svg"></svg>
+                        <div class="price">Rs. ${price.toFixed(2)}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <script>
+                window.onload = function() {
+                    const bc = "${barcode}";
+                    for (let i = 0; i < 40; i++) {
+                        JsBarcode("#barcode-" + i, bc, {
+                            format: "CODE128",
+                            width: 2,
+                            height: 40,
+                            displayValue: true,
+                            fontSize: 12,
+                            margin: 0,
+                            textMargin: 2
+                        });
+                    }
+                    setTimeout(() => {
+                        window.print();
+                        window.close();
+                    }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
 // === INIT ===
-document.addEventListener('DOMContentLoaded', () => {
+function setupAll() {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
+    setupBarcodePrinter();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupAll();
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
     // Admin edit save button

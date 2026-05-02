@@ -9,6 +9,7 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 <div class="toast-container" id="toast-container"></div>
@@ -52,6 +53,7 @@
         <li><a href="#" class="nav-link active" data-target="dashboard-view" data-title="Dashboard"><i class='bx bx-grid-alt'></i><span>Dashboard</span></a></li>
         <li><a href="#" class="nav-link" data-target="pos-view" data-title="New Bill"><i class='bx bx-cart'></i><span>New Bill</span></a></li>
         <li><a href="#" class="nav-link" data-target="inventory-view" data-title="Inventory"><i class='bx bx-box'></i><span>Inventory</span></a></li>
+        <li><a href="#" class="nav-link" data-target="barcode-view" data-title="Barcode Printer"><i class='bx bx-barcode-reader'></i><span>Barcode Printer</span></a></li>
         <li><a href="#" class="nav-link" data-target="imei-view" data-title="IMEI Management"><i class='bx bx-chip'></i><span>IMEI Tracker</span></a></li>
         <li><a href="#" class="nav-link" data-target="warranty-view" data-title="Warranty"><i class='bx bx-shield-quarter'></i><span>Warranty</span></a></li>
         <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
@@ -192,6 +194,18 @@
             </div>
             <div class="table-card"><div class="table-responsive">
                 <table class="data-table" id="inv-table"><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Cost</th><th>Price</th><th>Type</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            </div></div>
+        </section>
+
+        <!-- BARCODE PRINTER -->
+        <section id="barcode-view" class="view">
+            <div class="view-head"><h2>Barcode Printer</h2>
+                <div class="view-actions">
+                    <div class="search-input"><i class='bx bx-search'></i><input type="text" id="barcode-search" class="form-control" placeholder="Search products..." style="width:250px"></div>
+                </div>
+            </div>
+            <div class="table-card"><div class="table-responsive">
+                <table class="data-table" id="barcode-print-table"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Price</th><th>Action</th></tr></thead><tbody></tbody></table>
             </div></div>
         </section>
 

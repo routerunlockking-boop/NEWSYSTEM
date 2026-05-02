@@ -43,8 +43,14 @@ router.get('/:id/image', async (req, res) => {
 
 // Create product
 router.post('/', async (req, res) => {
-    const { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
+    let { name, barcode, quantity, cost_price, price, image, category, is_imei_tracked, warranty_months, supplier } = req.body;
     if (!name || price === undefined) return res.status(400).json({ error: 'Missing required fields' });
+    
+    // Auto-generate barcode for non-IMEI products if not provided
+    if (!is_imei_tracked && (!barcode || barcode.trim() === '')) {
+        barcode = 'SZ' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    }
+
     try {
         const product = await Product.create({
             user_id: req.user._id, name, barcode: barcode || '',
