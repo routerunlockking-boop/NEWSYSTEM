@@ -220,10 +220,9 @@ function updateBillTotals() {
     document.getElementById('pos-total').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
     document.getElementById('pos-balance').textContent = balance.toLocaleString(undefined, {minimumFractionDigits:2});
     
-    // Update top discount summary
-    const totalDiscount = manualDiscount + voucherDiscount;
-    const topDisc = document.getElementById('pos-top-discount');
-    if (topDisc) topDisc.textContent = `Rs. ${totalDiscount.toLocaleString(undefined, {minimumFractionDigits:2})}`;
+    // Update top subtotal
+    const topSub = document.getElementById('pos-top-subtotal');
+    if (topSub) topSub.textContent = `Rs. ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2})}`;
 
     // Show/Hide voucher discount row
     const discountRow = document.getElementById('voucher-discount-row');
@@ -401,8 +400,8 @@ async function printReceipt(inv) {
                         <span>${labels.label_date || ''} ${inv.date}</span>
                     </div>
                     <div style="text-align:right; margin: 4px 0 10px 0; border-bottom:1.5px dashed #000; padding-bottom:6px">
-                        <span style="font-size:11px; color:#555">TOTAL DISCOUNT:</span>
-                        <span style="font-size:14px; font-weight:800; margin-left:6px; color:#dc2626">Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
+                        <span style="font-size:11px; color:#555">SUBTOTAL:</span>
+                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
                     </div>
                 `;
             } else if (blockId === 'people_info') {
@@ -431,10 +430,9 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span></div>
                         ${((inv.discount || 0) + (inv.voucher_discount || 0)) > 0 ? `
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;color:#000;">
-                            <span>Total Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
+                            <span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
                             <span>- Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
                         </div>
                         ` : ''}
@@ -482,8 +480,8 @@ async function printReceipt(inv) {
                         ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
                     </div>` : ''}
                     <div style="text-align:right; margin-top:8px; border-bottom:1.5px dashed #000; padding-bottom:8px">
-                        <span style="font-size:11px; color:#555">TOTAL DISCOUNT:</span>
-                        <span style="font-size:14px; font-weight:800; margin-left:6px; color:#dc2626">Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
+                        <span style="font-size:11px; color:#555">SUBTOTAL:</span>
+                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
                     </div>
                 </div>
                 
@@ -504,13 +502,9 @@ async function printReceipt(inv) {
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
                 
                 <div style="font-size:12px;margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                        <span>${invSettings.label_subtotal}</span>
-                        <span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
-                    </div>
                     ${((inv.discount || 0) + (inv.voucher_discount || 0)) > 0 ? `
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;color:#000;">
-                        <span>Total Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
+                        <span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
                         <span>- Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
                     </div>
                     ` : ''}
@@ -708,16 +702,7 @@ async function viewInvoice(id) {
             </tbody></table>
             <div style="text-align:right;margin-top:15px;font-size:13px;border-top:1px solid #eee;padding-top:10px">
                 <div style="margin-bottom:4px">Subtotal: Rs. ${(inv.subtotal_amount || inv.total_amount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                ${inv.discount > 0 ? `<div style="color:var(--danger);margin-bottom:4px">Manual Discount: - Rs. ${inv.discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
-                ${inv.voucher_discount > 0 ? `
-                    <div style="color:var(--text-muted);font-size:11px">Voucher: ${inv.voucher_code}</div>
-                    <div style="color:var(--danger);margin-bottom:4px">Voucher Discount: - Rs. ${inv.voucher_discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                ` : ''}
-                ${(inv.discount > 0 || inv.voucher_discount > 0) ? `<div style="margin-bottom:8px;font-weight:600;color:var(--primary)">Price After Reductions: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
-                <div style="text-align:right">
-                    <div style="font-size:11px;color:var(--text-muted);font-weight:600">TOTAL DISCOUNT</div>
-                    <div id="pos-top-discount" style="font-size:20px;font-weight:800;color:var(--danger)">Rs. 0.00</div>
-                </div>
+                ${(inv.discount + inv.voucher_discount) > 0 ? `<div style="color:var(--danger);margin-bottom:4px">Total Discount: - Rs. ${(inv.discount + inv.voucher_discount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
                 <div style="font-size:20px;font-weight:800;color:var(--primary)">TOTAL: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
             </div>
             <div style="text-align:right;color:var(--text-muted);margin-top:5px">Paid: Rs. ${(inv.amount_paid||0).toLocaleString(undefined,{minimumFractionDigits:2})} | Method: ${inv.payment_method||'Cash'}</div>
