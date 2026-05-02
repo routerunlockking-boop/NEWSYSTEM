@@ -953,12 +953,14 @@ function printBarcodes() {
             try {
                 JsBarcode(`#${task.id}`, task.code, {
                     format: "CODE128",
-                    width: 2,
-                    height: 60,
+                    width: 2.5, // Thicker bars for better scanning
+                    height: 80, // Taller bars
                     displayValue: true,
-                    fontSize: 16,
-                    margin: 0,
-                    background: "#ffffff"
+                    fontSize: 18,
+                    fontOptions: "bold",
+                    margin: 10, // Quiet zone for scanners
+                    background: "#ffffff",
+                    lineColor: "#000000"
                 });
             } catch(e) { 
                 console.error("Barcode generation failed for " + task.code, e); 
