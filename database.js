@@ -148,7 +148,6 @@ const InvoiceSchema = new mongoose.Schema({
     cashier_name: { type: String, default: 'System' },
     payment_method: { type: String, default: 'Cash' },
     subtotal_amount: { type: Number, default: 0.0 },
-    discount: { type: Number, default: 0.0 },
     voucher_code: { type: String, default: '' },
     voucher_discount: { type: Number, default: 0.0 },
     total_amount: { type: Number, default: 0.0 },

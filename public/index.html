@@ -8,15 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
-    <style>
-        @media print {
-            @page { size: 80mm auto; margin: 0; }
-            html, body { margin: 0; padding: 0; width: 80mm; }
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 80mm; margin: 0; padding: 0; }
-        }
-    </style>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
@@ -134,8 +125,9 @@
                     <div class="bill-head">
                         <div><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
                         <div style="text-align:right">
-                            <div style="font-size:11px;color:var(--text-muted);font-weight:600">TOTAL DISCOUNT</div>
-                            <div id="pos-top-discount" style="font-size:20px;font-weight:800;color:var(--danger)">Rs. 0.00</div>
+                            <div style="font-size:12px;color:var(--text-muted);font-weight:600">SUBTOTAL</div>
+                            <div id="pos-top-subtotal" style="font-size:20px;font-weight:800;color:var(--primary)">Rs. 0.00</div>
+                            <div id="pos-price-after-voucher" style="font-size:11px;color:var(--danger);font-weight:700"></div>
                         </div>
                         <div style="display:flex;gap:6px;align-items:center">
                             <button class="btn btn-outline btn-sm" id="btn-toggle-customer" title="Add Customer"><i class='bx bx-user-plus'></i> Customer</button>
@@ -188,10 +180,6 @@
                         <div class="voucher-row">
                             <input type="text" id="pos-voucher" class="form-control" placeholder="Voucher code">
                             <button class="btn btn-outline btn-sm" id="btn-apply-voucher">Apply</button>
-                        </div>
-                        <div class="summary-row" style="margin-bottom:12px; align-items:center">
-                            <span style="font-size:12px; font-weight:600">Manual Discount</span>
-                            <input type="number" id="pos-manual-discount" class="form-control" style="width:110px; padding:6px 10px; text-align:right" placeholder="0.00">
                         </div>
                         <div class="summary-row"><span>Subtotal</span><span id="pos-subtotal">0.00</span></div>
                         <div class="summary-row" id="voucher-discount-row" style="display:none;color:var(--success)"><span>Discount</span><span id="pos-discount">-0.00</span></div>
