@@ -29,6 +29,22 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get next available barcode
+router.get('/next-barcode', async (req, res) => {
+    try {
+        const existingBarcodes = await Product.find({ user_id: req.user._id, barcode: /^\d+$/ }).select('barcode');
+        let maxNum = 0;
+        existingBarcodes.forEach(p => {
+            const num = parseInt(p.barcode);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+        });
+        const nextBarcode = (maxNum + 1).toString().padStart(3, '0');
+        res.json({ nextBarcode });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Get product image
 router.get('/:id/image', async (req, res) => {
     try {

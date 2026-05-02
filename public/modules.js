@@ -67,6 +67,16 @@ function setupProductModal() {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
         await loadCategories();
+        
+        // Auto-fill next barcode
+        try {
+            const res = await api('/products/next-barcode');
+            if (res && res.ok) {
+                const d = await res.json();
+                document.getElementById('prod-barcode').value = d.nextBarcode || '001';
+            }
+        } catch(e) { console.error('Failed to fetch next barcode', e); }
+
         document.getElementById('product-modal-title').textContent = 'Add Product';
         document.getElementById('prod-normal-fields').style.display = 'block';
         document.getElementById('prod-imei-fields').style.display = 'none';

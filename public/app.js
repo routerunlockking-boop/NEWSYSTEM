@@ -793,6 +793,8 @@ async function loadInvoiceDesigner() {
 }
 
 // === BARCODE PRINTER ===
+let printQueue = [];
+
 async function loadBarcodePrinter() {
     const search = document.getElementById('barcode-search')?.value.toLowerCase() || '';
     try {
@@ -808,18 +810,16 @@ async function loadBarcodePrinter() {
         const tb = document.querySelector('#barcode-print-table tbody');
         if (tb) {
             if (filtered.length === 0) {
-                tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No products found</td></tr>';
+                tb.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">No products found</td></tr>';
                 return;
             }
             tb.innerHTML = filtered.map(p => `
-                <tr onclick="printBarcodeA4('${p.name.replace(/'/g, "\\'")}', '${p.barcode||''}', ${p.price})" style="cursor:pointer">
+                <tr onclick="addToPrintQueue('${p.name.replace(/'/g, "\\'")}', '${p.barcode||''}', ${p.price})" style="cursor:pointer">
                     <td><strong>${p.name}</strong></td>
                     <td><code style="background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-size:12px">${p.barcode || '<span style="color:var(--danger)">No Barcode</span>'}</code></td>
-                    <td>${p.category || 'General'}</td>
-                    <td>Rs. ${(p.price||0).toFixed(2)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">
-                            <i class='bx bx-printer'></i> Print
+                    <td style="text-align:right">
+                        <button class="btn btn-sm btn-outline">
+                            <i class='bx bx-plus'></i> Add
                         </button>
                     </td>
                 </tr>`).join('');
@@ -827,29 +827,85 @@ async function loadBarcodePrinter() {
     } catch(e) { console.error(e); }
 }
 
+window.addToPrintQueue = function(name, barcode, price) {
+    if (!barcode) return toast('This product has no barcode. Please edit it first.', 'error');
+    const existing = printQueue.find(item => item.barcode === barcode);
+    const qty = parseInt(document.getElementById('barcode-copies').value) || 10;
+    if (existing) {
+        existing.qty += qty;
+    } else {
+        printQueue.push({ name, barcode, price, qty });
+    }
+    toast(`Added ${name} to queue`);
+    renderPrintQueue();
+};
+
+window.removeFromPrintQueue = function(index) {
+    printQueue.splice(index, 1);
+    renderPrintQueue();
+};
+
+function renderPrintQueue() {
+    const tb = document.querySelector('#barcode-queue-table tbody');
+    if (!tb) return;
+    if (printQueue.length === 0) {
+        tb.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">Queue is empty</td></tr>';
+        return;
+    }
+    tb.innerHTML = printQueue.map((item, index) => `
+        <tr>
+            <td><strong>${item.name}</strong></td>
+            <td><code>${item.barcode}</code></td>
+            <td><input type="number" class="form-control" style="width:60px;padding:4px" value="${item.qty}" onchange="printQueue[${index}].qty = parseInt(this.value)||1"></td>
+            <td style="text-align:right">
+                <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="removeFromPrintQueue(${index})"><i class='bx bx-trash'></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
 function setupBarcodePrinter() {
     const searchInput = document.getElementById('barcode-search');
     if (searchInput) {
         searchInput.onkeyup = loadBarcodePrinter;
     }
+    const printAllBtn = document.getElementById('btn-print-all');
+    if (printAllBtn) {
+        printAllBtn.onclick = () => {
+            if (printQueue.length === 0) return toast('Queue is empty', 'error');
+            printBarcodeA4();
+        };
+    }
 }
 
-window.printBarcodeA4 = function(name, barcode, price) {
-    if (!barcode) return toast('No barcode for this product', 'error');
+window.printBarcodeA4 = function() {
+    if (printQueue.length === 0) return;
     
-    const copies = parseInt(document.getElementById('barcode-copies').value) || 40;
     const size = document.getElementById('barcode-size').value;
-    
-    let perRow = 4, height = 35;
-    if (size === 'small') { perRow = 5; height = 25; }
-    else if (size === 'medium') { perRow = 4; height = 35; }
-    else if (size === 'large') { perRow = 2; height = 50; }
+    let perRow = 4, labelHeight = 35;
+    if (size === 'small') { perRow = 5; labelHeight = 25; }
+    else if (size === 'medium') { perRow = 4; labelHeight = 35; }
+    else if (size === 'large') { perRow = 2; labelHeight = 50; }
 
     const printWindow = window.open('', '_blank', 'width=900,height=700');
+    
+    let labelsHtml = '';
+    printQueue.forEach((item, itemIdx) => {
+        for (let i = 0; i < item.qty; i++) {
+            labelsHtml += `
+                <div class="label">
+                    <div class="name">${item.name}</div>
+                    <svg id="barcode-${itemIdx}-${i}" class="barcode-svg"></svg>
+                    <div class="price">Rs. ${item.price.toFixed(2)}</div>
+                </div>
+            `;
+        }
+    });
+
     printWindow.document.write(`
         <html>
         <head>
-            <title>Barcode Print - ${name}</title>
+            <title>Barcode Print Queue</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
             <style>
                 @page { size: A4; margin: 5mm; }
@@ -868,46 +924,40 @@ window.printBarcodeA4 = function(name, barcode, price) {
                     flex-direction: column;
                     align-items: center;
                     justify-content: space-between;
-                    height: ${height}mm;
+                    height: ${labelHeight}mm;
                     page-break-inside: avoid;
                     border-radius: 2px;
                 }
                 .name { font-size: 8px; font-weight: 700; margin-bottom: 1px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .price { font-size: 9px; font-weight: 800; margin-top: 1px; }
-                .barcode-svg { width: 100%; height: auto; max-height: ${height - 12}mm; }
+                .barcode-svg { width: 100%; height: auto; max-height: ${labelHeight - 12}mm; }
             </style>
             <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
         </head>
         <body>
-            <div class="grid">
-                ${Array(copies).fill(0).map((_, i) => `
-                    <div class="label">
-                        <div class="name">${name}</div>
-                        <svg id="barcode-${i}" class="barcode-svg"></svg>
-                        <div class="price">Rs. ${price.toFixed(2)}</div>
-                    </div>
-                `).join('')}
-            </div>
+            <div class="grid">${labelsHtml}</div>
             <script>
                 window.onload = function() {
-                    const bc = "${barcode}";
+                    const queue = ${JSON.stringify(printQueue)};
                     const size = "${size}";
                     let bcWidth = 2, bcHeight = 40, bcFontSize = 12;
                     if (size === 'small') { bcWidth = 1.2; bcHeight = 30; bcFontSize = 10; }
                     else if (size === 'medium') { bcWidth = 1.8; bcHeight = 45; bcFontSize = 14; }
                     else if (size === 'large') { bcWidth = 2.5; bcHeight = 60; bcFontSize = 18; }
 
-                    for (let i = 0; i < ${copies}; i++) {
-                        JsBarcode("#barcode-" + i, bc, {
-                            format: "CODE128",
-                            width: bcWidth,
-                            height: bcHeight,
-                            displayValue: true,
-                            fontSize: bcFontSize,
-                            margin: 0,
-                            textMargin: 2
-                        });
-                    }
+                    queue.forEach((item, itemIdx) => {
+                        for (let i = 0; i < item.qty; i++) {
+                            JsBarcode("#barcode-" + itemIdx + "-" + i, item.barcode, {
+                                format: "CODE128",
+                                width: bcWidth,
+                                height: bcHeight,
+                                displayValue: true,
+                                fontSize: bcFontSize,
+                                margin: 0,
+                                textMargin: 2
+                            });
+                        }
+                    });
                     setTimeout(() => {
                         window.print();
                         window.close();
