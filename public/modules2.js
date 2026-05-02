@@ -6,51 +6,53 @@ const POS_SCAN_THROTTLE_MS = 3000;
 async function handlePosScan(val) {
     if (!val) return;
 
-    // Try IMEI lookup first
+    // 1. Immediate throttle check to prevent rapid-fire scans
+    const now = Date.now();
+    if (now - lastPosScanTime < POS_SCAN_THROTTLE_MS) {
+        const remaining = Math.ceil((POS_SCAN_THROTTLE_MS - (now - lastPosScanTime)) / 1000);
+        toast(`Scanning too fast! Wait ${remaining}s...`, 'warning');
+        return;
+    }
+    // Update timestamp IMMEDIATELY before any async calls to lock the slot
+    lastPosScanTime = now;
+
+    // 2. Try IMEI lookup
     try {
         const res = await api(`/imei/lookup/${encodeURIComponent(val)}`);
         if (res && res.ok) {
             const item = await res.json();
-            if (item.status !== 'In Stock') { toast(`IMEI ${val} is ${item.status}`, 'error'); return; }
+            if (item.status !== 'In Stock') { 
+                toast(`IMEI ${val} is ${item.status}`, 'error'); 
+                lastPosScanTime = 0; // Reset throttle on error so they can try again
+                return; 
+            }
             
-            // IMEI uniqueness check (already in bill?)
             if (imeiInBill.find(i => i.imei_number === item.imei_number)) { 
                 toast('Already in bill', 'error'); 
+                lastPosScanTime = 0; 
                 return; 
             }
 
-            // Throttling check
-            const now = Date.now();
-            if (now - lastPosScanTime < POS_SCAN_THROTTLE_MS) {
-                const remaining = Math.ceil((POS_SCAN_THROTTLE_MS - (now - lastPosScanTime)) / 1000);
-                toast(`Please wait ${remaining}s before next scan`, 'warning');
-                return;
-            }
-
             addImeiToBill(item);
-            lastPosScanTime = Date.now();
             focusScanField();
             return;
         }
     } catch(ex) {}
 
-    // Try barcode
+    // 3. Try barcode
     const prod = products.find(p => p.barcode === val);
     if (prod && !prod.is_imei_tracked) {
-        // Throttling check
-        const now = Date.now();
-        if (now - lastPosScanTime < POS_SCAN_THROTTLE_MS) {
-            const remaining = Math.ceil((POS_SCAN_THROTTLE_MS - (now - lastPosScanTime)) / 1000);
-            toast(`Please wait ${remaining}s before next scan`, 'warning');
-            return;
-        }
-
         addToBill(prod);
-        lastPosScanTime = Date.now();
         toast(`Added: ${prod.name}`);
     }
-    else if (prod && prod.is_imei_tracked) { toast('IMEI product - scan individual IMEI number', 'error'); }
-    else { toast(`Not found: ${val}`, 'error'); }
+    else if (prod && prod.is_imei_tracked) { 
+        toast('IMEI product - scan individual IMEI number', 'error'); 
+        lastPosScanTime = 0; 
+    }
+    else { 
+        toast(`Not found: ${val}`, 'error'); 
+        lastPosScanTime = 0; 
+    }
     focusScanField();
 }
 
