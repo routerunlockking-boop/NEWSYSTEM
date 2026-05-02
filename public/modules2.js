@@ -543,21 +543,18 @@ async function printReceipt(inv) {
         `;
     }
 
-    pa.style.display = 'block';
-    
-    // window.print blocks the thread. Once the print dialog closes, we hide the area and refocus scanner.
-    setTimeout(() => { 
-        try {
-            window.print(); 
-        } catch(e) {
-            console.error('Print failed:', e);
-            alert('Print failed. Please check your printer connection or browser settings.');
-        } finally {
-            pa.style.display = 'none'; 
-            const scanInput = document.getElementById('pos-scan');
-            if (scanInput) scanInput.focus();
-        }
-    }, 500);
+    // Safe data to localStorage for the print window
+    localStorage.setItem('print_invoice', JSON.stringify({
+        invoice: inv,
+        settings: invSettings,
+        labels: labels || invSettings
+    }));
+
+    // Open new print window
+    const printWin = window.open('print.html', '_blank', 'width=302,height=600');
+    if (!printWin) {
+        alert('Pop-up blocked! Please allow pop-ups to print the invoice.');
+    }
 }
 
 // === WARRANTY ===

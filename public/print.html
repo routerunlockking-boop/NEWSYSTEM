@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print Invoice</title>
+    <style>
+        @page { size: 80mm auto; margin: 0; }
+        body { margin: 0; padding: 0; width: 80mm; font-family: 'Inter', sans-serif; }
+        .receipt { width: 80mm; box-sizing: border-box; padding: 4mm; color: #000; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase; }
+        .header p { margin: 4px 0; font-size: 16px; font-weight: 700; }
+        .divider { border-bottom: 3px dashed #000; margin: 12px 0; }
+        .info { font-size: 16px; font-weight: 700; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .items-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+        .items-table th { text-align: left; border-bottom: 2px dashed #000; padding-bottom: 8px; }
+        .items-table td { padding: 8px 0; vertical-align: top; }
+        .totals { margin-top: 15px; font-size: 18px; }
+        .totals-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700; }
+        .discount-row { color: #dc2626; }
+        .grand-total { font-size: 36px; font-weight: 900; margin: 15px 0; }
+        .footer { text-align: center; font-size: 14px; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px; }
+        @media print {
+            body { visibility: visible; }
+        }
+    </style>
+</head>
+<body>
+    <div id="receipt-content" class="receipt"></div>
+    <script>
+        window.onload = function() {
+            const data = JSON.parse(localStorage.getItem('print_invoice'));
+            if (!data) return;
+
+            const inv = data.invoice;
+            const settings = data.settings;
+            const labels = data.labels || settings;
+
+            const totalDiscount = (inv.discount || 0) + (inv.voucher_discount || 0);
+
+            let itemsHtml = inv.items.map(i => `
+                <tr>
+                    <td style="width:55%">${i.product_name}${i.imei_number ? '<br><small style="font-size:12px">IMEI: ' + i.imei_number + '</small>' : ''}</td>
+                    <td style="width:15%; text-align:center">${i.quantity}</td>
+                    <td style="width:30%; text-align:right">${i.subtotal.toFixed(2)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('receipt-content').innerHTML = `
+                <div class="header">
+                    <h1>${settings.header_title || 'SmartZone'}</h1>
+                    <p>${settings.header_subtitle || ''}</p>
+                    <p>${settings.header_contact || ''}</p>
+                    <div class="divider"></div>
+                    <h2 style="margin:0;font-size:22px;font-weight:800;text-transform:uppercase;">${settings.tax_invoice_text || 'TAX INVOICE'}</h2>
+                </div>
+                
+                <div class="info">
+                    <div class="info-row">
+                        <span>${settings.label_bill_no || 'Bill No:'} ${inv.invoice_number}</span>
+                        <span>${inv.date}</span>
+                    </div>
+                    ${inv.cashier_name ? `<div style="margin-bottom:4px;">Cashier: ${inv.cashier_name}</div>` : ''}
+                    ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
+                        <div style="margin-top:10px; border-top:1px dashed #555; padding-top:6px;">
+                            <div>Customer: ${inv.customer_name}</div>
+                            ${inv.customer_phone ? '<div>Tel: ' + inv.customer_phone + '</div>' : ''}
+                        </div>
+                    ` : ''}
+                    <div style="text-align:right; margin-top:12px; border-bottom:2px dashed #000; padding-bottom:10px">
+                        <span style="font-size:16px; color:#555">DISCOUNT:</span>
+                        <span style="font-size:24px; font-weight:800; margin-left:8px; color:#dc2626">Rs. ${totalDiscount.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>${settings.label_item || 'Item'}</th>
+                            <th style="text-align:center">${settings.label_qty || 'Qty'}</th>
+                            <th style="text-align:right">${settings.label_amount || 'Amount'}</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
+
+                <div class="divider"></div>
+
+                <div class="totals">
+                    <div class="totals-row discount-row">
+                        <span>DISCOUNT ${inv.voucher_code ? '(' + inv.voucher_code + ')' : ''}</span>
+                        <span>- Rs. ${totalDiscount.toFixed(2)}</span>
+                    </div>
+                    <div class="divider" style="border-bottom-width:4px;"></div>
+                    <div class="totals-row grand-total">
+                        <span>TOTAL</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div class="divider" style="border-bottom-width:4px;"></div>
+                    <div class="totals-row" style="font-size:16px; font-weight:600;">
+                        <span>PAID</span>
+                        <span>${(inv.amount_paid || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="totals-row" style="font-size:18px;">
+                        <span>BALANCE</span>
+                        <span>${((inv.amount_paid || 0) - inv.total_amount).toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <p style="font-weight:800; font-size:18px; margin-bottom:8px;">${settings.footer_msg1 || 'Thank You! Come Again'}</p>
+                    <p>${settings.footer_msg2 || ''}</p>
+                    <p style="margin-top:15px; font-size:12px; font-family:monospace; color:#555;">Powered by SmartZone</p>
+                </div>
+            `;
+
+            setTimeout(() => {
+                window.print();
+                window.close();
+            }, 500);
+        };
+    </script>
+</body>
+</html>
