@@ -430,10 +430,17 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        ${((inv.discount || 0) + (inv.voucher_discount || 0)) > 0 ? `
+                        ${(inv.discount || 0) > 0 ? `
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;">
+                            <span>Discount</span>
+                            <span>- Rs. ${(inv.discount || 0).toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                        ${(inv.voucher_discount || 0) > 0 ? `
+                        <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;color:#000;">
-                            <span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
-                            <span>- Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
+                            <span>Voucher Discount</span>
+                            <span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span>
                         </div>
                         ` : ''}
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
@@ -455,10 +462,10 @@ async function printReceipt(inv) {
         });
             
         finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
-        pa.innerHTML = `<div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">${finalHtml}</div>`;
+        pa.innerHTML = `<div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
     } else {
         pa.innerHTML = `
-            <div style="width:100%;max-width:80mm;">
+            <div style="width:80mm; margin:0; padding:0;">
                 <div style="text-align:center;margin-bottom:12px;">
                     <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
                     <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
@@ -502,10 +509,17 @@ async function printReceipt(inv) {
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
                 
                 <div style="font-size:12px;margin-bottom:10px;">
-                    ${((inv.discount || 0) + (inv.voucher_discount || 0)) > 0 ? `
+                    ${(inv.discount || 0) > 0 ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;">
+                        <span>Discount</span>
+                        <span>- Rs. ${(inv.discount || 0).toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    ${(inv.voucher_discount || 0) > 0 ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;color:#000;">
-                        <span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
-                        <span>- Rs. ${((inv.discount || 0) + (inv.voucher_discount || 0)).toFixed(2)}</span>
+                        <span>Voucher Discount</span>
+                        <span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span>
                     </div>
                     ` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
