@@ -75,15 +75,15 @@ function setupProductModal() {
         document.getElementById('prod-normal-fields').style.display = 'block';
         document.getElementById('prod-imei-fields').style.display = 'none';
         
-        // Auto-generate barcode for new product (Sequential based on current products)
-        let maxBarcode = 100000000000;
+        // Auto-generate barcode for new product (Sequential starting from 0001)
+        let maxBarcode = 0;
         if (products && products.length > 0) {
             products.forEach(p => {
                 const b = parseInt(p.barcode);
                 if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
             });
         }
-        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString();
+        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString().padStart(4, '0');
         
         openModal('modal-product');
     };
@@ -124,14 +124,14 @@ function setupProductModal() {
         } catch(e) { toast(e.message,'error'); }
     };
     document.getElementById('btn-gen-barcode').onclick = () => {
-        let maxBarcode = 100000000000;
+        let maxBarcode = 0;
         if (products && products.length > 0) {
             products.forEach(p => {
                 const b = parseInt(p.barcode);
                 if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
             });
         }
-        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString();
+        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString().padStart(4, '0');
         toast('Barcode generated');
     };
 }
