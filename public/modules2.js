@@ -81,9 +81,6 @@ function setupPOS() {
         }
     });
 
-    // Handle voucher application
-    document.getElementById('btn-apply-voucher')?.addEventListener('click', applyVoucher);
-
     // Load customers for the dropdown
     loadCustomers();
     // Load cashiers for the dropdown
@@ -92,28 +89,25 @@ function setupPOS() {
 
 async function loadCashiers() {
     try {
-        const res = await api('/auth/cashiers');
-        if (!res || !res.ok) return;
+        const res = await fetch(API + '/auth/cashiers', {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) return;
         const cashiers = await res.json();
         const sel = document.getElementById('pos-cashier-select');
         if (sel) {
             sel.innerHTML = '<option value="">-- Select Cashier --</option>' +
                 cashiers.map(c => `<option value="${c.name}">${c.name} (${c.role})</option>`).join('') +
                 '<option value="__custom__">✏️ Type Name...</option>';
-            
-            // Auto-select the logged-in user's business name
-            const myBiz = localStorage.getItem('pos_business');
+            // Auto-select the logged-in user
+            const myBiz = localStorage.getItem('pos_business') || '';
             if (myBiz) {
-                for (let i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === myBiz) {
-                        sel.selectedIndex = i;
-                        break;
-                    }
+                for (let opt of sel.options) {
+                    if (opt.value === myBiz) { sel.value = myBiz; break; }
                 }
             }
-            
             // Handle custom cashier name toggle
-            sel.onchange = function() {
+            sel.addEventListener('change', function() {
                 const customInput = document.getElementById('pos-cashier-custom');
                 if (this.value === '__custom__') {
                     customInput.style.display = 'block';
@@ -122,7 +116,7 @@ async function loadCashiers() {
                     customInput.style.display = 'none';
                     customInput.value = '';
                 }
-            };
+            });
         }
     } catch(e) { console.error('Failed to load cashiers:', e); }
 }
@@ -206,60 +200,11 @@ function removeBillItem(i) {
 }
 
 function updateBillTotals() {
-    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const paid = parseFloat(document.getElementById('pos-paid').value) || 0;
-    
-    // Update variables
-    const total = Math.max(0, subtotal - voucherDiscount);
-    const balance = paid > 0 ? (paid - total) : 0;
-
-    document.getElementById('pos-subtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('pos-subtotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
     document.getElementById('pos-total').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
-    document.getElementById('pos-balance').textContent = balance.toLocaleString(undefined, {minimumFractionDigits:2});
-    
-    // Update top subtotal if it exists (for better visibility)
-    const topSub = document.getElementById('pos-top-subtotal');
-    if (topSub) topSub.textContent = `Rs. ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-
-    // Show/Hide discount row
-    const discountRow = document.getElementById('voucher-discount-row');
-    if (voucherDiscount > 0) {
-        discountRow.style.display = 'flex';
-        document.getElementById('pos-discount').textContent = `- Rs. ${voucherDiscount.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-        // Add Price After Voucher display if not present
-        let pav = document.getElementById('pos-price-after-voucher');
-        if (pav) pav.textContent = `After Voucher: Rs. ${total.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-    } else {
-        discountRow.style.display = 'none';
-    }
-}
-
-async function applyVoucher() {
-    const code = document.getElementById('pos-voucher').value.trim();
-    if (!code) return;
-    try {
-        const res = await api('/vouchers/validate', { method: 'POST', body: JSON.stringify({ code }) });
-        if (!res) return;
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        
-        voucherCode = d.code;
-        const subtotal = currentBill.reduce((sum, item) => sum + item.subtotal || (item.price * item.quantity), 0);
-        
-        if (d.discount_type === 'percentage') {
-            voucherDiscount = subtotal * (d.discount_value / 100);
-        } else {
-            voucherDiscount = d.discount_value;
-        }
-        
-        toast(`Voucher "${voucherCode}" applied!`);
-        updateBillTotals();
-    } catch(e) {
-        voucherDiscount = 0;
-        voucherCode = '';
-        toast(e.message, 'error');
-        updateBillTotals();
-    }
+    document.getElementById('pos-balance').textContent = (paid - total).toLocaleString(undefined, {minimumFractionDigits:2});
 }
 
 async function submitBill() {
@@ -276,15 +221,11 @@ async function submitBill() {
         const caddr = document.getElementById('pos-cust-address').value.trim();
         if (!cn || !cp || !cnic || !caddr) { toast('Customer details required for IMEI items', 'error'); return; }
     }
-    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
-    const total = Math.max(0, subtotal - voucherDiscount);
+    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const data = {
         items: currentBill.map(b => ({ name: b.name, price: b.price, quantity: b.quantity, is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '' })),
         imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
-        subtotal_amount: subtotal,
         total_amount: total,
-        voucher_code: voucherCode,
-        voucher_discount: voucherDiscount,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
         payment_method: document.getElementById('pos-payment').value,
         cashier_name: cashierName,
@@ -302,8 +243,6 @@ async function submitBill() {
         toast('Bill created successfully!');
         await printReceipt(d.invoice);
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
-        voucherCode = ''; voucherDiscount = 0;
-        document.getElementById('pos-voucher').value = '';
         document.getElementById('pos-customer-box').style.display = 'none';
         const custBtn = document.getElementById('btn-toggle-customer');
         custBtn.classList.remove('btn-primary');
@@ -397,10 +336,6 @@ async function printReceipt(inv) {
                         <span>${labels.label_bill || ''} ${inv.invoice_number}</span>
                         <span>${labels.label_date || ''} ${inv.date}</span>
                     </div>
-                    <div style="text-align:right; margin: 4px 0 10px 0; border-bottom:1.5px dashed #000; padding-bottom:6px">
-                        <span style="font-size:11px; color:#555">SUBTOTAL:</span>
-                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
-                    </div>
                 `;
             } else if (blockId === 'people_info') {
                 finalHtml += `<div style="font-size:11px;font-weight:500;margin-bottom:8px;">`;
@@ -428,12 +363,7 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span></div>
-                        ${inv.voucher_discount > 0 ? `
-                        <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${inv.total_amount.toFixed(2)}</span></div>
-                        ` : ''}
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
@@ -477,10 +407,6 @@ async function printReceipt(inv) {
                         <div style="font-weight:700;">${invSettings.label_customer} ${inv.customer_name}</div>
                         ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
                     </div>` : ''}
-                    <div style="text-align:right; margin-top:8px; border-bottom:1.5px dashed #000; padding-bottom:8px">
-                        <span style="font-size:11px; color:#555">SUBTOTAL:</span>
-                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
-                    </div>
                 </div>
                 
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
@@ -502,13 +428,8 @@ async function printReceipt(inv) {
                 <div style="font-size:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                         <span>${invSettings.label_subtotal}</span>
-                        <span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
                     </div>
-                    ${inv.voucher_discount > 0 ? `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${inv.total_amount.toFixed(2)}</span></div>
-                    ` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
                         <span>${invSettings.label_total}</span>
@@ -695,16 +616,8 @@ async function viewInvoice(id) {
             <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>
                 ${inv.items.map(i => `<tr><td>${i.product_name}${i.imei_number?`<br><small>IMEI: ${i.imei_number}</small>`:''}</td><td>${i.quantity}</td><td>${i.price.toFixed(2)}</td><td>${i.subtotal.toFixed(2)}</td></tr>`).join('')}
             </tbody></table>
-            <div style="text-align:right;margin-top:15px;font-size:13px;border-top:1px solid #eee;padding-top:10px">
-                <div style="margin-bottom:4px">Subtotal: Rs. ${(inv.subtotal_amount || inv.total_amount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                ${inv.voucher_discount > 0 ? `
-                    <div style="color:var(--text-muted);font-size:11px">Voucher: ${inv.voucher_code}</div>
-                    <div style="color:var(--danger);margin-bottom:4px">Discount: - Rs. ${inv.voucher_discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                    <div style="margin-bottom:8px;font-weight:600;color:var(--primary)">Price After Voucher: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                ` : ''}
-                <div style="font-size:20px;font-weight:800;color:var(--primary)">TOTAL: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-            </div>
-            <div style="text-align:right;color:var(--text-muted);margin-top:5px">Paid: Rs. ${(inv.amount_paid||0).toLocaleString(undefined,{minimumFractionDigits:2})} | Method: ${inv.payment_method||'Cash'}</div>
+            <div style="text-align:right;margin-top:10px;font-size:16px"><strong>Total: Rs. ${inv.total_amount.toFixed(2)}</strong></div>
+            <div style="text-align:right;color:var(--text-muted)">Paid: Rs. ${(inv.amount_paid||0).toFixed(2)} | Method: ${inv.payment_method||'Cash'}</div>
         `;
         document.getElementById('btn-reprint-invoice').onclick = () => printReceipt(inv);
         openModal('modal-invoice');

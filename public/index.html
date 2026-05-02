@@ -9,7 +9,6 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 <div class="toast-container" id="toast-container"></div>
@@ -57,12 +56,10 @@
         <li><a href="#" class="nav-link" data-target="warranty-view" data-title="Warranty"><i class='bx bx-shield-quarter'></i><span>Warranty</span></a></li>
         <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
         <li><a href="#" class="nav-link" data-target="suppliers-view" data-title="Suppliers"><i class='bx bx-truck'></i><span>Suppliers</span></a></li>
-        <li><a href="#" class="nav-link" data-target="vouchers-view" data-title="Vouchers"><i class='bx bx-purchase-tag'></i><span>Vouchers</span></a></li>
         <li><a href="#" class="nav-link" data-target="invoices-view" data-title="Invoices"><i class='bx bx-receipt'></i><span>Invoices</span></a></li>
         <li><a href="#" class="nav-link" data-target="design-view" data-title="Invoice Designer"><i class='bx bx-brush'></i><span>Invoice Designer</span></a></li>
         <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
         <li><a href="#" class="nav-link" data-target="reports-view" data-title="Reports"><i class='bx bx-bar-chart-alt-2'></i><span>Reports</span></a></li>
-        <li><a href="#" class="nav-link" data-target="barcode-view" data-title="Print Barcodes"><i class='bx bx-barcode'></i><span>Barcodes</span></a></li>
         <li class="nav-divider" id="nav-admin-divider" style="display:none"></li>
         <li id="nav-admin-item" style="display:none"><a href="#" class="nav-link" data-target="admin-view" data-title="Admin"><i class='bx bx-cog'></i><span>Admin</span></a></li>
     </ul>
@@ -124,11 +121,6 @@
                 <div class="pos-right">
                     <div class="bill-head">
                         <div><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
-                        <div style="text-align:right">
-                            <div style="font-size:12px;color:var(--text-muted);font-weight:600">SUBTOTAL</div>
-                            <div id="pos-top-subtotal" style="font-size:20px;font-weight:800;color:var(--primary)">Rs. 0.00</div>
-                            <div id="pos-price-after-voucher" style="font-size:11px;color:var(--danger);font-weight:700"></div>
-                        </div>
                         <div style="display:flex;gap:6px;align-items:center">
                             <button class="btn btn-outline btn-sm" id="btn-toggle-customer" title="Add Customer"><i class='bx bx-user-plus'></i> Customer</button>
                             <button class="btn btn-outline btn-sm" id="btn-clear-bill" title="Clear Bill"><i class='bx bx-trash'></i> Clear</button>
@@ -333,57 +325,6 @@
             <div class="table-card"><div class="table-responsive"><table class="data-table" id="reports-table"><thead></thead><tbody></tbody></table></div></div>
         </section>
 
-        <!-- VOUCHERS -->
-        <section id="vouchers-view" class="view">
-            <div class="view-head"><h2>Voucher Management</h2><button class="btn btn-primary" id="btn-add-voucher"><i class='bx bx-plus'></i> Add Voucher</button></div>
-            <div class="table-card"><div class="table-responsive"><table class="data-table" id="voucher-table">
-                <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Usage</th><th>Expiry</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody></tbody>
-            </table></div></div>
-        </section>
-
-        <!-- BARCODE PRINTING -->
-        <section id="barcode-view" class="view">
-            <div class="view-head"><h2>Barcode Printing</h2>
-                <div class="view-actions">
-                    <div style="display:flex;gap:10px;align-items:center;background:var(--secondary);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border)">
-                        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Size:</label>
-                        <select id="barcode-cfg-size" class="form-control" style="width:110px;padding:4px 8px">
-                            <option value="small">Small (4/row)</option>
-                            <option value="medium" selected>Medium (4/row)</option>
-                            <option value="large">Large (3/row)</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" id="btn-print-barcodes"><i class='bx bx-printer'></i> Print A4 Sheet</button>
-                    <button class="btn btn-outline" id="btn-clear-barcode-queue"><i class='bx bx-trash'></i> Clear Queue</button>
-                </div>
-            </div>
-            <div class="barcode-split">
-                <div class="barcode-left">
-                    <div class="card-head"><h3>Select Products</h3></div>
-                    <div class="search-bar" style="margin-bottom:15px; display:flex; gap:8px">
-                        <div class="scanner-input" style="flex:1"><i class='bx bx-barcode'></i><input type="text" id="barcode-scan-input" class="form-control" placeholder="Scan barcode to add to queue..."></div>
-                        <div class="scanner-input" style="flex:1"><i class='bx bx-search'></i><input type="text" id="barcode-prod-search" class="form-control" placeholder="Search product name..."></div>
-                    </div>
-                    <div class="table-card"><div class="table-responsive" style="max-height:600px">
-                        <table class="data-table" id="barcode-selection-table">
-                            <thead><tr><th>Product</th><th>Barcode</th><th>Price</th><th>Action</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div></div>
-                </div>
-                <div class="barcode-right">
-                    <div class="card-head"><h3>Printing Queue</h3></div>
-                    <div class="table-card"><div class="table-responsive" style="max-height:600px">
-                        <table class="data-table" id="barcode-queue-table">
-                            <thead><tr><th>Product</th><th>Barcode</th><th>Copies</th><th>Action</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div></div>
-                </div>
-            </div>
-        </section>
-
         <!-- ADMIN -->
         <section id="admin-view" class="view">
             <div class="view-head"><h2>Manage Accounts</h2></div>
@@ -415,12 +356,7 @@
         <div class="form-group"><label>Default Warranty (months)</label><input type="number" id="prod-warranty" class="form-control" value="12"></div>
         <p style="font-size:12px;color:var(--text-muted)"><i class='bx bx-info-circle'></i> Stock for IMEI items is managed by adding individual IMEI numbers in the IMEI Tracker.</p>
     </div>
-    <div class="form-group"><label>Barcode / SKU</label>
-        <div style="display:flex;gap:8px">
-            <input type="text" id="prod-barcode" class="form-control" placeholder="Optional">
-            <button type="button" class="btn btn-outline btn-sm" id="btn-gen-barcode" title="Generate Barcode"><i class='bx bx-refresh'></i> Gen</button>
-        </div>
-    </div>
+    <div class="form-group"><label>Barcode / SKU</label><input type="text" id="prod-barcode" class="form-control" placeholder="Optional"></div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-product')">Cancel</button><button class="btn btn-primary" id="btn-save-product">Save Product</button></div>
 </div></div>
@@ -588,23 +524,6 @@
     <div class="form-group"><label><input type="checkbox" id="admin-edit-active"> Account Active</label></div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-admin-edit')">Cancel</button><button class="btn btn-primary" id="btn-save-admin-edit"><i class='bx bx-check'></i> Save Changes</button></div>
-</div></div>
-
-<!-- Add Voucher Modal -->
-<div class="modal-bg" id="modal-voucher"><div class="modal"><div class="modal-head"><h3><i class='bx bx-purchase-tag' style="color:var(--primary)"></i> Add Voucher</h3><button class="close-btn" onclick="closeModal('modal-voucher')">&times;</button></div>
-<div class="modal-body"><form id="voucher-form">
-    <div class="form-group"><label>Voucher Code *</label><input type="text" id="v-code" class="form-control" placeholder="E.g. SUMMER2024" required></div>
-    <div class="form-row">
-        <div class="form-group"><label>Discount Type</label><select id="v-type" class="form-control"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed Amount (Rs.)</option></select></div>
-        <div class="form-group"><label>Value *</label><input type="number" id="v-value" class="form-control" step="0.01" required></div>
-    </div>
-    <div class="form-row">
-        <div class="form-group"><label>Usage Limit</label><input type="number" id="v-limit" class="form-control" placeholder="Optional"></div>
-        <div class="form-group"><label>Expiry Date</label><input type="date" id="v-expiry" class="form-control"></div>
-    </div>
-    <div class="form-group"><label>Status</label><select id="v-status" class="form-control"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-</form></div>
-<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-voucher')">Cancel</button><button class="btn btn-primary" id="btn-save-voucher"><i class='bx bx-check'></i> Save Voucher</button></div>
 </div></div>
 
 <!-- Print Area -->
