@@ -33,8 +33,9 @@ function setupPOS() {
         const q = e.target.value.toLowerCase();
         renderPOSGrid(q);
     });
-    document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
-    document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
+    document.getElementById('pos-paid')?.addEventListener('input', updateBillTotals);
+    document.getElementById('pos-manual-discount')?.addEventListener('input', updateBillTotals);
+    document.getElementById('btn-apply-voucher')?.addEventListener('click', applyVoucher);
     
     // Handle customer selection in POS
     document.getElementById('pos-cust-select')?.addEventListener('change', function() {
@@ -208,9 +209,10 @@ function removeBillItem(i) {
 function updateBillTotals() {
     const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const paid = parseFloat(document.getElementById('pos-paid').value) || 0;
+    const manualDiscount = parseFloat(document.getElementById('pos-manual-discount').value) || 0;
     
     // Update variables
-    const total = Math.max(0, subtotal - voucherDiscount);
+    const total = Math.max(0, subtotal - voucherDiscount - manualDiscount);
     const balance = paid > 0 ? (paid - total) : 0;
 
     document.getElementById('pos-subtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits:2});
@@ -277,11 +279,13 @@ async function submitBill() {
         if (!cn || !cp || !cnic || !caddr) { toast('Customer details required for IMEI items', 'error'); return; }
     }
     const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
-    const total = Math.max(0, subtotal - voucherDiscount);
+    const manualDiscount = parseFloat(document.getElementById('pos-manual-discount').value) || 0;
+    const total = Math.max(0, subtotal - voucherDiscount - manualDiscount);
     const data = {
         items: currentBill.map(b => ({ name: b.name, price: b.price, quantity: b.quantity, is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '' })),
         imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
         subtotal_amount: subtotal,
+        discount: manualDiscount,
         total_amount: total,
         voucher_code: voucherCode,
         voucher_discount: voucherDiscount,
@@ -429,10 +433,11 @@ async function printReceipt(inv) {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span></div>
+                        ${inv.discount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount</span><span>- Rs. ${inv.discount.toFixed(2)}</span></div>` : ''}
                         ${inv.voucher_discount > 0 ? `
                         <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.subtotal_amount - inv.voucher_discount - (inv.discount||0)).toFixed(2)}</span></div>
                         ` : ''}
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
@@ -504,10 +509,11 @@ async function printReceipt(inv) {
                         <span>${invSettings.label_subtotal}</span>
                         <span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
                     </div>
+                    ${inv.discount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount</span><span>- Rs. ${inv.discount.toFixed(2)}</span></div>` : ''}
                     ${inv.voucher_discount > 0 ? `
                     <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${inv.total_amount.toFixed(2)}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.subtotal_amount - inv.voucher_discount - (inv.discount||0)).toFixed(2)}</span></div>
                     ` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
@@ -697,11 +703,12 @@ async function viewInvoice(id) {
             </tbody></table>
             <div style="text-align:right;margin-top:15px;font-size:13px;border-top:1px solid #eee;padding-top:10px">
                 <div style="margin-bottom:4px">Subtotal: Rs. ${(inv.subtotal_amount || inv.total_amount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>
+                ${inv.discount > 0 ? `<div style="color:var(--danger);margin-bottom:4px">Manual Discount: - Rs. ${inv.discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
                 ${inv.voucher_discount > 0 ? `
                     <div style="color:var(--text-muted);font-size:11px">Voucher: ${inv.voucher_code}</div>
-                    <div style="color:var(--danger);margin-bottom:4px">Discount: - Rs. ${inv.voucher_discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                    <div style="margin-bottom:8px;font-weight:600;color:var(--primary)">Price After Voucher: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
+                    <div style="color:var(--danger);margin-bottom:4px">Voucher Discount: - Rs. ${inv.voucher_discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
                 ` : ''}
+                ${(inv.discount > 0 || inv.voucher_discount > 0) ? `<div style="margin-bottom:8px;font-weight:600;color:var(--primary)">Price After Reductions: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
                 <div style="font-size:20px;font-weight:800;color:var(--primary)">TOTAL: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
             </div>
             <div style="text-align:right;color:var(--text-muted);margin-top:5px">Paid: Rs. ${(inv.amount_paid||0).toLocaleString(undefined,{minimumFractionDigits:2})} | Method: ${inv.payment_method||'Cash'}</div>

@@ -114,11 +114,12 @@ router.post('/', async (req, res) => {
             payment_method: payment_method || 'Cash',
             date, time,
             subtotal_amount: parsedSubtotal,
+            discount: parseFloat(req.body.discount) || 0,
             voucher_code: voucher_code || '',
             voucher_discount: parsedDiscount,
             total_amount: parsedTotal, 
             amount_paid: parsedPaid,
-            total_profit: total_profit - parsedDiscount, // Profit reduced by discount
+            total_profit: total_profit - parsedDiscount - (parseFloat(req.body.discount) || 0),
             items: formattedItems
         });
 
