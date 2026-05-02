@@ -925,41 +925,50 @@ function printBarcodes() {
     const printArea = document.getElementById('print-area');
     printArea.innerHTML = '';
     
-    // Use a temporary container to render SVG barcodes
+    // We need to keep track of all barcode elements to render them
+    const renderTasks = [];
+
     barcodeQueue.forEach(item => {
         for (let i = 0; i < item.copies; i++) {
             const sticker = document.createElement('div');
             sticker.className = 'barcode-sticker';
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             const svgId = `barcode-${item.id}-${i}`;
+            svg.id = svgId;
+            
             sticker.innerHTML = `
                 <div class="sticker-name">${item.name}</div>
-                <svg id="${svgId}"></svg>
+            `;
+            sticker.appendChild(svg);
+            sticker.innerHTML += `
                 <div class="sticker-price">Rs. ${(item.price || 0).toFixed(2)}</div>
             `;
             printArea.appendChild(sticker);
             
-            // Generate barcode synchronously in next tick
-            setTimeout(() => {
-                try {
-                    JsBarcode(`#${svgId}`, item.barcode, {
-                        format: "CODE128",
-                        width: 2,
-                        height: 50,
-                        displayValue: true,
-                        fontSize: 14,
-                        margin: 0
-                    });
-                } catch(e) { console.error("Barcode generation failed", e); }
-            }, 0);
+            renderTasks.push({ el: svg, code: item.barcode });
         }
     });
 
-    // Wait for barcodes to render then print
+    // Render all barcodes
+    renderTasks.forEach(task => {
+        try {
+            JsBarcode(task.el, task.code, {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true,
+                fontSize: 14,
+                margin: 0
+            });
+        } catch(e) { console.error("Barcode generation failed", e); }
+    });
+
+    // Wait a bit for the browser to layout the grid then print
     setTimeout(() => {
         document.body.classList.add('printing-barcodes');
         window.print();
         setTimeout(() => {
             document.body.classList.remove('printing-barcodes');
-        }, 500);
-    }, 1000);
+        }, 1000);
+    }, 500);
 }

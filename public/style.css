@@ -423,12 +423,13 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     body.printing-barcodes #print-area * { visibility: visible; }
     
     body.printing-barcodes #print-area {
+        display: grid !important;
         position: absolute; left: 0; top: 0; width: 190mm; /* A4 width 210mm - 20mm margins */
-        display: grid;
         grid-template-columns: repeat(3, 1fr); /* 3 labels per row */
         gap: 5mm;
         padding: 0;
         background: white;
+        visibility: visible !important;
     }
     
     .barcode-sticker {
