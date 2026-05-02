@@ -338,8 +338,9 @@
             <div class="barcode-split">
                 <div class="barcode-left">
                     <div class="card-head"><h3>Select Products</h3></div>
-                    <div class="search-bar" style="margin-bottom:15px">
-                        <div class="scanner-input"><i class='bx bx-search'></i><input type="text" id="barcode-prod-search" class="form-control" placeholder="Search product name or barcode..."></div>
+                    <div class="search-bar" style="margin-bottom:15px; display:flex; gap:8px">
+                        <div class="scanner-input" style="flex:1"><i class='bx bx-barcode'></i><input type="text" id="barcode-scan-input" class="form-control" placeholder="Scan barcode to add to queue..."></div>
+                        <div class="scanner-input" style="flex:1"><i class='bx bx-search'></i><input type="text" id="barcode-prod-search" class="form-control" placeholder="Search product name..."></div>
                     </div>
                     <div class="table-card"><div class="table-responsive" style="max-height:600px">
                         <table class="data-table" id="barcode-selection-table">
@@ -391,7 +392,12 @@
         <div class="form-group"><label>Default Warranty (months)</label><input type="number" id="prod-warranty" class="form-control" value="12"></div>
         <p style="font-size:12px;color:var(--text-muted)"><i class='bx bx-info-circle'></i> Stock for IMEI items is managed by adding individual IMEI numbers in the IMEI Tracker.</p>
     </div>
-    <div class="form-group"><label>Barcode / SKU</label><input type="text" id="prod-barcode" class="form-control" placeholder="Optional"></div>
+    <div class="form-group"><label>Barcode / SKU</label>
+        <div style="display:flex;gap:8px">
+            <input type="text" id="prod-barcode" class="form-control" placeholder="Optional">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-gen-barcode" title="Generate Barcode"><i class='bx bx-refresh'></i> Gen</button>
+        </div>
+    </div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-product')">Cancel</button><button class="btn btn-primary" id="btn-save-product">Save Product</button></div>
 </div></div>

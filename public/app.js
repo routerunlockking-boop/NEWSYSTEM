@@ -833,6 +833,24 @@ function setupBarcodePrinting() {
     
     const printBtn = document.getElementById('btn-print-barcodes');
     if (printBtn) printBtn.onclick = printBarcodes;
+
+    const scanInput = document.getElementById('barcode-scan-input');
+    if (scanInput) {
+        scanInput.onkeydown = async e => {
+            if (e.key === 'Enter') {
+                const barcode = sanitizeBarcode(scanInput.value);
+                scanInput.value = '';
+                if (products.length === 0) await loadInventory();
+                const p = products.find(x => x.barcode === barcode);
+                if (p) {
+                    if (p.is_imei_tracked) return toast('Cannot print barcodes for IMEI items', 'error');
+                    addToBarcodeQueue(p.id);
+                } else {
+                    toast('Product not found with this barcode', 'error');
+                }
+            }
+        };
+    }
 }
 
 async function loadBarcodeProducts() {
@@ -843,8 +861,10 @@ async function loadBarcodeProducts() {
     if (products.length === 0) await loadInventory(); 
 
     const filtered = products.filter(p => 
-        p.name.toLowerCase().includes(search) || 
-        (p.barcode && p.barcode.toLowerCase().includes(search))
+        !p.is_imei_tracked && (
+            p.name.toLowerCase().includes(search) || 
+            (p.barcode && p.barcode.toLowerCase().includes(search))
+        )
     );
 
     tb.innerHTML = filtered.map(p => `<tr>
