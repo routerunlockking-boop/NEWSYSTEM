@@ -276,6 +276,7 @@ function setupNav() {
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
             if(target==='slt-view') { /* ready for generate */ }
+            if(target==='barcode-view') loadBarcodeProducts();
         };
     });
 }
@@ -796,6 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
+    setupBarcodePrinting();
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
     // Admin edit save button
@@ -819,3 +821,125 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBill();
     };
 });
+
+// === BARCODE PRINTING ===
+let barcodeQueue = [];
+function setupBarcodePrinting() {
+    const searchInput = document.getElementById('barcode-prod-search');
+    if (searchInput) searchInput.onkeyup = loadBarcodeProducts;
+    
+    const clearBtn = document.getElementById('btn-clear-barcode-queue');
+    if (clearBtn) clearBtn.onclick = clearBarcodeQueue;
+    
+    const printBtn = document.getElementById('btn-print-barcodes');
+    if (printBtn) printBtn.onclick = printBarcodes;
+}
+
+async function loadBarcodeProducts() {
+    const search = (document.getElementById('barcode-prod-search')?.value || '').toLowerCase();
+    const tb = document.querySelector('#barcode-selection-table tbody');
+    if (!tb) return;
+
+    if (products.length === 0) await loadInventory(); 
+
+    const filtered = products.filter(p => 
+        p.name.toLowerCase().includes(search) || 
+        (p.barcode && p.barcode.toLowerCase().includes(search))
+    );
+
+    tb.innerHTML = filtered.map(p => `<tr>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.barcode || '<span style="color:var(--text-muted)">No Barcode</span>'}</td>
+        <td>${(p.price || 0).toFixed(2)}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="addToBarcodeQueue('${p.id}')"><i class='bx bx-plus'></i> Add</button></td>
+    </tr>`).join('');
+}
+
+window.addToBarcodeQueue = function(id) {
+    const p = products.find(x => x.id === id);
+    if (!p) return;
+    if (!p.barcode) return toast('Product has no barcode. Edit product to add one.', 'error');
+
+    const existing = barcodeQueue.find(x => x.id === id);
+    if (existing) {
+        existing.copies++;
+    } else {
+        barcodeQueue.push({ ...p, copies: 1 });
+    }
+    renderBarcodeQueue();
+    toast(`Added ${p.name} to queue`);
+}
+
+window.removeFromBarcodeQueue = function(id) {
+    barcodeQueue = barcodeQueue.filter(x => x.id !== id);
+    renderBarcodeQueue();
+}
+
+window.updateBarcodeCopies = function(id, copies) {
+    const item = barcodeQueue.find(x => x.id === id);
+    if (item) item.copies = parseInt(copies) || 1;
+}
+
+function clearBarcodeQueue() {
+    if (barcodeQueue.length === 0) return;
+    if (confirm('Clear the printing queue?')) {
+        barcodeQueue = [];
+        renderBarcodeQueue();
+    }
+}
+
+function renderBarcodeQueue() {
+    const tb = document.querySelector('#barcode-queue-table tbody');
+    if (!tb) return;
+    tb.innerHTML = barcodeQueue.map(p => `<tr>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.barcode}</td>
+        <td><input type="number" class="form-control copies-input" value="${p.copies}" min="1" onchange="updateBarcodeCopies('${p.id}', this.value)"></td>
+        <td><button class="btn btn-sm btn-danger" onclick="removeFromBarcodeQueue('${p.id}')"><i class='bx bx-trash'></i></button></td>
+    </tr>`).join('');
+}
+
+function printBarcodes() {
+    if (barcodeQueue.length === 0) return toast('Queue is empty', 'error');
+
+    const printArea = document.getElementById('print-area');
+    printArea.innerHTML = '';
+    
+    // Use a temporary container to render SVG barcodes
+    barcodeQueue.forEach(item => {
+        for (let i = 0; i < item.copies; i++) {
+            const sticker = document.createElement('div');
+            sticker.className = 'barcode-sticker';
+            const svgId = `barcode-${item.id}-${i}`;
+            sticker.innerHTML = `
+                <div class="sticker-name">${item.name}</div>
+                <svg id="${svgId}"></svg>
+                <div class="sticker-price">Rs. ${(item.price || 0).toFixed(2)}</div>
+            `;
+            printArea.appendChild(sticker);
+            
+            // Generate barcode synchronously in next tick
+            setTimeout(() => {
+                try {
+                    JsBarcode(`#${svgId}`, item.barcode, {
+                        format: "CODE128",
+                        width: 2,
+                        height: 50,
+                        displayValue: true,
+                        fontSize: 14,
+                        margin: 0
+                    });
+                } catch(e) { console.error("Barcode generation failed", e); }
+            }, 0);
+        }
+    });
+
+    // Wait for barcodes to render then print
+    setTimeout(() => {
+        document.body.classList.add('printing-barcodes');
+        window.print();
+        setTimeout(() => {
+            document.body.classList.remove('printing-barcodes');
+        }, 500);
+    }, 1000);
+}

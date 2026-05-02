@@ -9,6 +9,7 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 <div class="toast-container" id="toast-container"></div>
@@ -60,6 +61,7 @@
         <li><a href="#" class="nav-link" data-target="design-view" data-title="Invoice Designer"><i class='bx bx-brush'></i><span>Invoice Designer</span></a></li>
         <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
         <li><a href="#" class="nav-link" data-target="reports-view" data-title="Reports"><i class='bx bx-bar-chart-alt-2'></i><span>Reports</span></a></li>
+        <li><a href="#" class="nav-link" data-target="barcode-view" data-title="Print Barcodes"><i class='bx bx-barcode'></i><span>Barcodes</span></a></li>
         <li class="nav-divider" id="nav-admin-divider" style="display:none"></li>
         <li id="nav-admin-item" style="display:none"><a href="#" class="nav-link" data-target="admin-view" data-title="Admin"><i class='bx bx-cog'></i><span>Admin</span></a></li>
     </ul>
@@ -323,6 +325,39 @@
                 <button class="btn btn-outline tab-btn" data-report="products">Product Sales</button>
             </div>
             <div class="table-card"><div class="table-responsive"><table class="data-table" id="reports-table"><thead></thead><tbody></tbody></table></div></div>
+        </section>
+
+        <!-- BARCODE PRINTING -->
+        <section id="barcode-view" class="view">
+            <div class="view-head"><h2>Barcode Printing</h2>
+                <div class="view-actions">
+                    <button class="btn btn-primary" id="btn-print-barcodes"><i class='bx bx-printer'></i> Print A4 Sheet</button>
+                    <button class="btn btn-outline" id="btn-clear-barcode-queue"><i class='bx bx-trash'></i> Clear Queue</button>
+                </div>
+            </div>
+            <div class="barcode-split">
+                <div class="barcode-left">
+                    <div class="card-head"><h3>Select Products</h3></div>
+                    <div class="search-bar" style="margin-bottom:15px">
+                        <div class="scanner-input"><i class='bx bx-search'></i><input type="text" id="barcode-prod-search" class="form-control" placeholder="Search product name or barcode..."></div>
+                    </div>
+                    <div class="table-card"><div class="table-responsive" style="max-height:600px">
+                        <table class="data-table" id="barcode-selection-table">
+                            <thead><tr><th>Product</th><th>Barcode</th><th>Price</th><th>Action</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div></div>
+                </div>
+                <div class="barcode-right">
+                    <div class="card-head"><h3>Printing Queue</h3></div>
+                    <div class="table-card"><div class="table-responsive" style="max-height:600px">
+                        <table class="data-table" id="barcode-queue-table">
+                            <thead><tr><th>Product</th><th>Barcode</th><th>Copies</th><th>Action</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div></div>
+                </div>
+            </div>
         </section>
 
         <!-- ADMIN -->
