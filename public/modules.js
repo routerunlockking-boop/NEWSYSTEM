@@ -33,11 +33,8 @@ async function loadInventory() {
             <td class="${p.quantity<=10?'text-danger':''}"><strong>${p.quantity}</strong></td>
             <td>Rs. ${(p.cost_price||0).toLocaleString()}</td><td>Rs. ${p.price.toLocaleString()}</td>
             <td>${p.is_imei_tracked?'<span class="badge badge-blue"><i class="bx bx-chip"></i> IMEI</span>':'<span class="badge badge-gray">Normal</span>'}</td>
-            <td>
-                <button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')" title="Edit"><i class='bx bx-edit'></i></button>
-                ${!p.is_imei_tracked ? `<button class="btn btn-sm btn-outline" onclick="quickPrintBarcode('${p.id}')" title="Print Barcode"><i class='bx bx-barcode'></i></button>` : ''}
-                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')" title="Delete"><i class='bx bx-trash'></i></button>
-            </td>
+            <td><button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')"><i class='bx bx-edit'></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')"><i class='bx bx-trash'></i></button></td>
         </tr>`).join('');
     } catch(e) { console.error(e); }
 }
@@ -67,24 +64,12 @@ function setupProductModal() {
         if (this.value === '__new__') document.getElementById('prod-category-new').focus();
     });
     document.getElementById('btn-add-product').onclick = async () => {
-        if (!products || products.length === 0) await loadInventory();
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
         await loadCategories();
         document.getElementById('product-modal-title').textContent = 'Add Product';
         document.getElementById('prod-normal-fields').style.display = 'block';
         document.getElementById('prod-imei-fields').style.display = 'none';
-        
-        // Auto-generate barcode for new product (Sequential starting from 0001)
-        let maxBarcode = 0;
-        if (products && products.length > 0) {
-            products.forEach(p => {
-                const b = parseInt(p.barcode);
-                if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
-            });
-        }
-        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString().padStart(4, '0');
-        
         openModal('modal-product');
     };
     document.getElementById('btn-save-product').onclick = async () => {
@@ -122,17 +107,6 @@ function setupProductModal() {
             toast(id ? 'Product updated' : 'Product added');
             closeModal('modal-product'); loadInventory();
         } catch(e) { toast(e.message,'error'); }
-    };
-    document.getElementById('btn-gen-barcode').onclick = () => {
-        let maxBarcode = 0;
-        if (products && products.length > 0) {
-            products.forEach(p => {
-                const b = parseInt(p.barcode);
-                if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
-            });
-        }
-        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString().padStart(4, '0');
-        toast('Barcode generated');
     };
 }
 
@@ -425,65 +399,3 @@ function openStatusModal(id) {
     if (smsCb) smsCb.checked = true;
     openModal('modal-status');
 }
-// === VOUCHERS ===
-async function loadVouchers() {
-    try {
-        const res = await api('/vouchers');
-        if (!res) return;
-        const vouchers = await res.json();
-        const tb = document.querySelector('#voucher-table tbody');
-        if (tb) {
-            tb.innerHTML = vouchers.map(v => `<tr>
-                <td><strong>${v.code}</strong></td>
-                <td>${v.discount_type==='percentage'?'% Amount':'Fixed Rs.'}</td>
-                <td>${v.discount_type==='percentage'?v.discount_value+'%':'Rs.'+v.discount_value.toLocaleString()}</td>
-                <td>${v.used_count} / ${v.usage_limit||'∞'}</td>
-                <td>${v.expiry_date?formatDate(v.expiry_date):'Never'}</td>
-                <td><span class="badge badge-${v.status==='active'?'green':'red'}">${v.status}</span></td>
-                <td><button class="btn btn-sm btn-danger" onclick="deleteVoucher('${v.id}')"><i class='bx bx-trash'></i></button></td>
-            </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No vouchers created yet</td></tr>';
-        }
-    } catch(e) { console.error(e); }
-}
-
-function setupVoucherModal() {
-    const addBtn = document.getElementById('btn-add-voucher');
-    if (addBtn) addBtn.onclick = () => {
-        document.getElementById('voucher-form').reset();
-        openModal('modal-voucher');
-    };
-    
-    const saveBtn = document.getElementById('btn-save-voucher');
-    if (saveBtn) saveBtn.onclick = async () => {
-        const data = {
-            code: document.getElementById('v-code').value.trim(),
-            discount_type: document.getElementById('v-type').value,
-            discount_value: parseFloat(document.getElementById('v-value').value),
-            usage_limit: parseInt(document.getElementById('v-limit').value) || null,
-            expiry_date: document.getElementById('v-expiry').value,
-            status: document.getElementById('v-status').value
-        };
-        if (!data.code || isNaN(data.discount_value)) return toast('Code and value required', 'error');
-        try {
-            const res = await api('/vouchers', { method: 'POST', body: JSON.stringify(data) });
-            if (!res) return;
-            if (!res.ok) {
-                const d = await res.json();
-                throw new Error(d.error);
-            }
-            toast('Voucher created');
-            closeModal('modal-voucher');
-            loadVouchers();
-        } catch(e) { toast(e.message, 'error'); }
-    };
-}
-
-async function deleteVoucher(id) {
-    if (!confirm('Delete this voucher?')) return;
-    try {
-        const res = await api(`/vouchers/${id}`, { method: 'DELETE' });
-        if (res && res.ok) { toast('Voucher deleted'); loadVouchers(); }
-    } catch(e) { toast(e.message, 'error'); }
-}
-
-window.deleteVoucher = deleteVoucher;
