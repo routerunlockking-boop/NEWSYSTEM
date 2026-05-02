@@ -802,6 +802,7 @@ async function loadBarcodePrinter() {
         if (!res) return;
         const allProducts = await res.json();
         const filtered = allProducts.filter(p => {
+            if (p.is_imei_tracked) return false;
             const nameMatch = (p.name || '').toLowerCase().includes(search);
             const barcodeMatch = (p.barcode || '').toLowerCase().includes(search);
             return nameMatch || barcodeMatch;
