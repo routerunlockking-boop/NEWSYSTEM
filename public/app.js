@@ -834,6 +834,11 @@ function setupBarcodePrinting() {
     const printBtn = document.getElementById('btn-print-barcodes');
     if (printBtn) printBtn.onclick = printBarcodes;
 
+    // Load preferences
+    if (localStorage.getItem('barcode_cfg_width')) document.getElementById('barcode-cfg-width').value = localStorage.getItem('barcode_cfg_width');
+    if (localStorage.getItem('barcode_cfg_height')) document.getElementById('barcode-cfg-height').value = localStorage.getItem('barcode_cfg_height');
+    if (localStorage.getItem('barcode_cfg_scale')) document.getElementById('barcode-cfg-scale').value = localStorage.getItem('barcode_cfg_scale');
+
     const scanInput = document.getElementById('barcode-scan-input');
     if (scanInput) {
         scanInput.onkeydown = async e => {
@@ -922,6 +927,15 @@ function renderBarcodeQueue() {
 function printBarcodes() {
     if (barcodeQueue.length === 0) return toast('Queue is empty', 'error');
 
+    const w = document.getElementById('barcode-cfg-width').value || 60;
+    const h = document.getElementById('barcode-cfg-height').value || 45;
+    const scale = document.getElementById('barcode-cfg-scale').value || 2;
+
+    // Save preferences
+    localStorage.setItem('barcode_cfg_width', w);
+    localStorage.setItem('barcode_cfg_height', h);
+    localStorage.setItem('barcode_cfg_scale', scale);
+
     const printArea = document.getElementById('print-area');
     printArea.innerHTML = '';
     
@@ -931,15 +945,15 @@ function printBarcodes() {
         for (let i = 0; i < item.copies; i++) {
             const sticker = document.createElement('div');
             sticker.className = 'barcode-sticker';
+            sticker.style.width = `${w}mm`;
+            sticker.style.height = `${h}mm`;
             
-            // Create a unique ID for this specific barcode SVG
             const svgId = `barcode-print-${item.id}-${i}-${Math.random().toString(36).substr(2, 5)}`;
             
-            // Use a template string for the sticker structure
             sticker.innerHTML = `
-                <div class="sticker-name">${item.name}</div>
+                <div class="sticker-name" style="font-size:${Math.max(8, h/4)}pt">${item.name}</div>
                 <svg id="${svgId}"></svg>
-                <div class="sticker-price">Rs. ${(item.price || 0).toFixed(2)}</div>
+                <div class="sticker-price" style="font-size:${Math.max(8, h/5)}pt">Rs. ${(item.price || 0).toFixed(2)}</div>
             `;
             
             printArea.appendChild(sticker);
@@ -947,27 +961,22 @@ function printBarcodes() {
         }
     });
 
-    // Render all barcodes AFTER they are in the DOM
+    // Render all barcodes
     setTimeout(() => {
         renderTasks.forEach(task => {
             try {
                 JsBarcode(`#${task.id}`, task.code, {
                     format: "CODE128",
-                    width: 2.5, // Thicker bars for better scanning
-                    height: 80, // Taller bars
+                    width: parseFloat(scale),
+                    height: h * 1.5, // Relative height
                     displayValue: true,
-                    fontSize: 18,
-                    fontOptions: "bold",
-                    margin: 10, // Quiet zone for scanners
-                    background: "#ffffff",
-                    lineColor: "#000000"
+                    fontSize: 14,
+                    margin: 5,
+                    background: "#ffffff"
                 });
-            } catch(e) { 
-                console.error("Barcode generation failed for " + task.code, e); 
-            }
+            } catch(e) { console.error("Barcode generation failed", e); }
         });
 
-        // Small delay to ensure rendering is complete
         setTimeout(() => {
             document.body.classList.add('printing-barcodes');
             window.print();

@@ -433,8 +433,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     }
     
     .barcode-sticker {
-        width: 60mm;
-        height: 55mm;
+        /* Dimensions set dynamically in JS */
         border: 1px solid #eee; /* Light border for cutting guidance */
         padding: 2mm;
         display: flex;
@@ -444,6 +443,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
         text-align: center;
         page-break-inside: avoid;
         background: white;
+        overflow: hidden;
     }
     
     .barcode-sticker .sticker-name {
