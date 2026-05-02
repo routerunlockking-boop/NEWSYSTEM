@@ -831,6 +831,10 @@ function setupBarcodePrinter() {
 window.printBarcodeA4 = function(name, barcode, price) {
     if (!barcode) return toast('No barcode for this product', 'error');
     
+    const copies = parseInt(document.getElementById('barcode-copies').value) || 40;
+    const perRow = parseInt(document.getElementById('barcode-per-row').value) || 4;
+    const height = parseInt(document.getElementById('barcode-height').value) || 28;
+
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     printWindow.document.write(`
         <html>
@@ -838,35 +842,35 @@ window.printBarcodeA4 = function(name, barcode, price) {
             <title>Barcode Print - ${name}</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
             <style>
-                @page { size: A4; margin: 10mm; }
+                @page { size: A4; margin: 5mm; }
                 body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: #000; }
                 .grid { 
                     display: grid; 
-                    grid-template-columns: repeat(4, 1fr); 
-                    gap: 10mm 5mm; 
+                    grid-template-columns: repeat(${perRow}, 1fr); 
+                    gap: 5mm 3mm; 
                     padding: 5mm;
                 }
                 .label {
-                    border: 0.2px solid #ddd;
-                    padding: 8px;
+                    border: 0.1px solid #eee;
+                    padding: 5px;
                     text-align: center;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: space-between;
-                    height: 28mm;
+                    height: ${height}mm;
                     page-break-inside: avoid;
-                    border-radius: 4px;
+                    border-radius: 2px;
                 }
-                .name { font-size: 9px; font-weight: 700; margin-bottom: 2px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .price { font-size: 10px; font-weight: 800; margin-top: 2px; }
-                .barcode-svg { width: 100%; height: auto; max-height: 14mm; }
+                .name { font-size: 8px; font-weight: 700; margin-bottom: 1px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .price { font-size: 9px; font-weight: 800; margin-top: 1px; }
+                .barcode-svg { width: 100%; height: auto; max-height: ${height - 12}mm; }
             </style>
             <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
         </head>
         <body>
             <div class="grid">
-                ${Array(40).fill(0).map((_, i) => `
+                ${Array(copies).fill(0).map((_, i) => `
                     <div class="label">
                         <div class="name">${name}</div>
                         <svg id="barcode-${i}" class="barcode-svg"></svg>
@@ -877,7 +881,7 @@ window.printBarcodeA4 = function(name, barcode, price) {
             <script>
                 window.onload = function() {
                     const bc = "${barcode}";
-                    for (let i = 0; i < 40; i++) {
+                    for (let i = 0; i < ${copies}; i++) {
                         JsBarcode("#barcode-" + i, bc, {
                             format: "CODE128",
                             width: 2,

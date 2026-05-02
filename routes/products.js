@@ -48,7 +48,17 @@ router.post('/', async (req, res) => {
     
     // Auto-generate barcode for non-IMEI products if not provided
     if (!is_imei_tracked && (!barcode || barcode.trim() === '')) {
-        barcode = 'SZ' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        try {
+            const lastProducts = await Product.find({ user_id: req.user._id, barcode: /^\d+$/ });
+            let maxNum = 0;
+            lastProducts.forEach(p => {
+                const num = parseInt(p.barcode);
+                if (num > maxNum) maxNum = num;
+            });
+            barcode = (maxNum + 1).toString().padStart(4, '0');
+        } catch (e) {
+            barcode = '0001';
+        }
     }
 
     try {
