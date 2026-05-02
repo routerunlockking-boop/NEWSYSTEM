@@ -409,3 +409,65 @@ function openStatusModal(id) {
     if (smsCb) smsCb.checked = true;
     openModal('modal-status');
 }
+// === VOUCHERS ===
+async function loadVouchers() {
+    try {
+        const res = await api('/vouchers');
+        if (!res) return;
+        const vouchers = await res.json();
+        const tb = document.querySelector('#voucher-table tbody');
+        if (tb) {
+            tb.innerHTML = vouchers.map(v => `<tr>
+                <td><strong>${v.code}</strong></td>
+                <td>${v.discount_type==='percentage'?'% Amount':'Fixed Rs.'}</td>
+                <td>${v.discount_type==='percentage'?v.discount_value+'%':'Rs.'+v.discount_value.toLocaleString()}</td>
+                <td>${v.used_count} / ${v.usage_limit||'∞'}</td>
+                <td>${v.expiry_date?formatDate(v.expiry_date):'Never'}</td>
+                <td><span class="badge badge-${v.status==='active'?'green':'red'}">${v.status}</span></td>
+                <td><button class="btn btn-sm btn-danger" onclick="deleteVoucher('${v.id}')"><i class='bx bx-trash'></i></button></td>
+            </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No vouchers created yet</td></tr>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+function setupVoucherModal() {
+    const addBtn = document.getElementById('btn-add-voucher');
+    if (addBtn) addBtn.onclick = () => {
+        document.getElementById('voucher-form').reset();
+        openModal('modal-voucher');
+    };
+    
+    const saveBtn = document.getElementById('btn-save-voucher');
+    if (saveBtn) saveBtn.onclick = async () => {
+        const data = {
+            code: document.getElementById('v-code').value.trim(),
+            discount_type: document.getElementById('v-type').value,
+            discount_value: parseFloat(document.getElementById('v-value').value),
+            usage_limit: parseInt(document.getElementById('v-limit').value) || null,
+            expiry_date: document.getElementById('v-expiry').value,
+            status: document.getElementById('v-status').value
+        };
+        if (!data.code || isNaN(data.discount_value)) return toast('Code and value required', 'error');
+        try {
+            const res = await api('/vouchers', { method: 'POST', body: JSON.stringify(data) });
+            if (!res) return;
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.error);
+            }
+            toast('Voucher created');
+            closeModal('modal-voucher');
+            loadVouchers();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+}
+
+async function deleteVoucher(id) {
+    if (!confirm('Delete this voucher?')) return;
+    try {
+        const res = await api(`/vouchers/${id}`, { method: 'DELETE' });
+        if (res && res.ok) { toast('Voucher deleted'); loadVouchers(); }
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+window.deleteVoucher = deleteVoucher;

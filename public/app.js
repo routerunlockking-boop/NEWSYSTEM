@@ -271,6 +271,7 @@ function setupNav() {
             if(target==='imei-view') loadImeiList();
             if(target==='customers-view') loadCustomers();
             if(target==='suppliers-view') loadSuppliers();
+            if(target==='vouchers-view') loadVouchers();
             if(target==='invoices-view') loadInvoices();
             if(target==='design-view') loadInvoiceDesigner();
             if(target==='reports-view') loadReports('sales');
@@ -795,9 +796,20 @@ async function loadInvoiceDesigner() {
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
-    setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
-    setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
+    setupNav(); 
+    setupProductModal(); 
+    setupImeiModal(); 
+    setupCategoryModal();
+    setupVoucherModal();
+    setupStatusModal();
+    setupDesigner();
+    setupPOS(); 
+    setupWarranty(); 
+    setupSLT(); 
+    setupInvoiceFilters(); 
+    setupReportTabs();
     setupBarcodePrinting();
+
     // Scan mode toggle
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
     // Admin edit save button

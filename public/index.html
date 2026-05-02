@@ -57,6 +57,7 @@
         <li><a href="#" class="nav-link" data-target="warranty-view" data-title="Warranty"><i class='bx bx-shield-quarter'></i><span>Warranty</span></a></li>
         <li><a href="#" class="nav-link" data-target="customers-view" data-title="Customers"><i class='bx bx-user'></i><span>Customers</span></a></li>
         <li><a href="#" class="nav-link" data-target="suppliers-view" data-title="Suppliers"><i class='bx bx-truck'></i><span>Suppliers</span></a></li>
+        <li><a href="#" class="nav-link" data-target="vouchers-view" data-title="Vouchers"><i class='bx bx-purchase-tag'></i><span>Vouchers</span></a></li>
         <li><a href="#" class="nav-link" data-target="invoices-view" data-title="Invoices"><i class='bx bx-receipt'></i><span>Invoices</span></a></li>
         <li><a href="#" class="nav-link" data-target="design-view" data-title="Invoice Designer"><i class='bx bx-brush'></i><span>Invoice Designer</span></a></li>
         <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
@@ -327,6 +328,15 @@
             <div class="table-card"><div class="table-responsive"><table class="data-table" id="reports-table"><thead></thead><tbody></tbody></table></div></div>
         </section>
 
+        <!-- VOUCHERS -->
+        <section id="vouchers-view" class="view">
+            <div class="view-head"><h2>Voucher Management</h2><button class="btn btn-primary" id="btn-add-voucher"><i class='bx bx-plus'></i> Add Voucher</button></div>
+            <div class="table-card"><div class="table-responsive"><table class="data-table" id="voucher-table">
+                <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Usage</th><th>Expiry</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+            </table></div></div>
+        </section>
+
         <!-- BARCODE PRINTING -->
         <section id="barcode-view" class="view">
             <div class="view-head"><h2>Barcode Printing</h2>
@@ -573,6 +583,23 @@
     <div class="form-group"><label><input type="checkbox" id="admin-edit-active"> Account Active</label></div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-admin-edit')">Cancel</button><button class="btn btn-primary" id="btn-save-admin-edit"><i class='bx bx-check'></i> Save Changes</button></div>
+</div></div>
+
+<!-- Add Voucher Modal -->
+<div class="modal-bg" id="modal-voucher"><div class="modal"><div class="modal-head"><h3><i class='bx bx-purchase-tag' style="color:var(--primary)"></i> Add Voucher</h3><button class="close-btn" onclick="closeModal('modal-voucher')">&times;</button></div>
+<div class="modal-body"><form id="voucher-form">
+    <div class="form-group"><label>Voucher Code *</label><input type="text" id="v-code" class="form-control" placeholder="E.g. SUMMER2024" required></div>
+    <div class="form-row">
+        <div class="form-group"><label>Discount Type</label><select id="v-type" class="form-control"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed Amount (Rs.)</option></select></div>
+        <div class="form-group"><label>Value *</label><input type="number" id="v-value" class="form-control" step="0.01" required></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Usage Limit</label><input type="number" id="v-limit" class="form-control" placeholder="Optional"></div>
+        <div class="form-group"><label>Expiry Date</label><input type="date" id="v-expiry" class="form-control"></div>
+    </div>
+    <div class="form-group"><label>Status</label><select id="v-status" class="form-control"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-voucher')">Cancel</button><button class="btn btn-primary" id="btn-save-voucher"><i class='bx bx-check'></i> Save Voucher</button></div>
 </div></div>
 
 <!-- Print Area -->

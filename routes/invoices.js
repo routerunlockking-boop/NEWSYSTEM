@@ -72,8 +72,10 @@ router.get('/:id', async (req, res) => {
 
 // Create invoice
 router.post('/', async (req, res) => {
-    const { items, total_amount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, customer_email, payment_method, imei_items } = req.body;
+    const { items, total_amount, subtotal_amount, voucher_code, voucher_discount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, customer_email, payment_method, imei_items } = req.body;
     const parsedTotal = parseFloat(total_amount) || 0;
+    const parsedSubtotal = parseFloat(subtotal_amount) || parsedTotal;
+    const parsedDiscount = parseFloat(voucher_discount) || 0;
     const parsedPaid = parseFloat(amount_paid) || 0;
     if (!items || items.length === 0) return res.status(400).json({ error: 'Invalid invoice data' });
 
@@ -111,9 +113,20 @@ router.post('/', async (req, res) => {
             cashier_name: cashier_name || 'System',
             payment_method: payment_method || 'Cash',
             date, time,
-            total_amount: parsedTotal, amount_paid: parsedPaid,
-            total_profit, items: formattedItems
+            subtotal_amount: parsedSubtotal,
+            voucher_code: voucher_code || '',
+            voucher_discount: parsedDiscount,
+            total_amount: parsedTotal, 
+            amount_paid: parsedPaid,
+            total_profit: total_profit - parsedDiscount, // Profit reduced by discount
+            items: formattedItems
         });
+
+        // Update voucher usage
+        if (voucher_code) {
+            const { Voucher } = require('../database');
+            await Voucher.updateOne({ code: voucher_code.toUpperCase(), status: 'active' }, { $inc: { used_count: 1 } });
+        }
 
         // Save or update customer
         if (customer_name && customer_phone) {
