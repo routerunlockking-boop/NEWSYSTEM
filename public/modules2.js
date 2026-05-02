@@ -429,23 +429,23 @@ async function printReceipt(inv) {
                 `;
             } else if (blockId === 'totals') {
                 finalHtml += `
-                    <div style="font-size:14px;margin-bottom:12px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>${labels.label_subtotal || 'Subtotal'}</span><span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span></div>
+                    <div style="font-size:16px;margin-bottom:15px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span>${labels.label_subtotal || 'Subtotal'}</span><span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span></div>
                         ${(inv.discount || 0) > 0 ? `
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:#000;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:#000;font-weight:700;">
                             <span>Discount</span>
                             <span>- Rs. ${(inv.discount || 0).toFixed(2)}</span>
                         </div>
                         ` : ''}
                         ${(inv.voucher_discount || 0) > 0 ? `
-                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:600;color:#000;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-weight:700;color:#000;">
                             <span>Voucher Discount</span>
                             <span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span>
                         </div>
                         ` : ''}
-                        <div style="border-bottom:2px dashed #000;margin:8px 0;"></div>
-                        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:18px;margin:8px 0;"><span>${labels.label_total || ''}</span><span>${(inv.total_amount || 0).toFixed(2)}</span></div>
+                        <div style="border-bottom:2.5px dashed #000;margin:10px 0;"></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:24px;margin:10px 0;"><span>${labels.label_total || ''}</span><span>${(inv.total_amount || 0).toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;"><span>${labels.label_paid || ''}</span><span>${paid.toFixed(2)}</span></div>
                         <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>${labels.label_balance || ''}</span><span>${balance.toFixed(2)}</span></div>
@@ -463,19 +463,19 @@ async function printReceipt(inv) {
         });
             
         finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
-        pa.innerHTML = `<div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
+        pa.innerHTML = `<div style="width:72mm; margin:0 auto; padding:0; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
     } else {
         pa.innerHTML = `
-            <div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">
-                <div style="text-align:center;margin-bottom:15px;">
-                    <h1 style="margin:0;font-size:28px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
-                    <p style="margin:4px 0;font-size:13px;font-weight:600;">${invSettings.header_subtitle}</p>
-                    <p style="margin:0;font-size:13px;font-weight:600;">${invSettings.header_contact}</p>
-                    <div style="border-bottom:2px dashed #000;margin:10px 0;"></div>
-                    <h2 style="margin:0;font-size:16px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
+            <div style="width:72mm; margin:0 auto; padding:0;">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h1 style="margin:0;font-size:32px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
+                    <p style="margin:6px 0;font-size:14px;font-weight:600;">${invSettings.header_subtitle}</p>
+                    <p style="margin:0;font-size:14px;font-weight:600;">${invSettings.header_contact}</p>
+                    <div style="border-bottom:2.5px dashed #000;margin:12px 0;"></div>
+                    <h2 style="margin:0;font-size:18px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
                 </div>
                 
-                <div style="font-size:13px;font-weight:600;margin-bottom:12px;">
+                <div style="font-size:14px;font-weight:600;margin-bottom:15px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
                         <span>${invSettings.label_bill_no} ${inv.invoice_number}</span>
                         <span>${inv.date}</span>
@@ -495,40 +495,40 @@ async function printReceipt(inv) {
                 
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
                 
-                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:10px;">
                     <span style="width:55%;text-align:left">${invSettings.label_item}</span>
                     <span style="width:15%;text-align:center">${invSettings.label_qty}</span>
                     <span style="width:30%;text-align:right">${invSettings.label_amount}</span>
                 </div>
                 
-                <div style="border-bottom:2px dashed #000;margin-bottom:8px;"></div>
+                <div style="border-bottom:2.5px dashed #000;margin-bottom:10px;"></div>
                 
-                <div style="font-size:13px;margin-bottom:10px;">
+                <div style="font-size:14px;margin-bottom:12px;">
                     ${itemsHtml}
                 </div>
                 
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
                 
-                <div style="font-size:14px;margin-bottom:12px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:16px;margin-bottom:15px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                         <span>${invSettings.label_subtotal}</span>
                         <span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
                     </div>
                     ${(inv.discount || 0) > 0 ? `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:#000;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:#000;font-weight:700;">
                         <span>Discount</span>
                         <span>- Rs. ${(inv.discount || 0).toFixed(2)}</span>
                     </div>
                     ` : ''}
                     ${(inv.voucher_discount || 0) > 0 ? `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:600;color:#000;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px;color:#555;"><span>Voucher: ${inv.voucher_code || ''}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-weight:700;color:#000;">
                         <span>Voucher Discount</span>
                         <span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span>
                     </div>
                     ` : ''}
-                    <div style="border-bottom:2px dashed #000;margin:8px 0;"></div>
-                    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:18px;margin:8px 0;">
+                    <div style="border-bottom:2.5px dashed #000;margin:10px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:900;font-size:24px;margin:10px 0;">
                         <span>${invSettings.label_total}</span>
                         <span>${(inv.total_amount || 0).toFixed(2)}</span>
                     </div>
