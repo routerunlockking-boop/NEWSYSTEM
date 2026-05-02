@@ -430,6 +430,7 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || 'Subtotal'}</span><span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span></div>
                         ${(inv.discount || 0) > 0 ? `
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;">
                             <span>Discount</span>
@@ -462,10 +463,10 @@ async function printReceipt(inv) {
         });
             
         finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
-        pa.innerHTML = `<div style="width:80mm; margin:0; padding:0; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
+        pa.innerHTML = `<div style="width:80mm; box-sizing:border-box; padding:0 4mm; font-family:sans-serif; color:#000;">${finalHtml}</div>`;
     } else {
         pa.innerHTML = `
-            <div style="width:80mm; margin:0; padding:0;">
+            <div style="width:80mm; box-sizing:border-box; padding:0 4mm;">
                 <div style="text-align:center;margin-bottom:12px;">
                     <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
                     <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
@@ -509,6 +510,10 @@ async function printReceipt(inv) {
                 <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
                 
                 <div style="font-size:12px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${invSettings.label_subtotal}</span>
+                        <span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
+                    </div>
                     ${(inv.discount || 0) > 0 ? `
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;">
                         <span>Discount</span>
@@ -716,7 +721,11 @@ async function viewInvoice(id) {
             </tbody></table>
             <div style="text-align:right;margin-top:15px;font-size:13px;border-top:1px solid #eee;padding-top:10px">
                 <div style="margin-bottom:4px">Subtotal: Rs. ${(inv.subtotal_amount || inv.total_amount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>
-                ${(inv.discount + inv.voucher_discount) > 0 ? `<div style="color:var(--danger);margin-bottom:4px">Total Discount: - Rs. ${(inv.discount + inv.voucher_discount).toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
+                ${inv.discount > 0 ? `<div style="color:var(--danger);margin-bottom:4px">Manual Discount: - Rs. ${inv.discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ''}
+                ${inv.voucher_discount > 0 ? `
+                    <div style="color:var(--text-muted);font-size:11px">Voucher: ${inv.voucher_code}</div>
+                    <div style="color:var(--danger);margin-bottom:4px">Voucher Discount: - Rs. ${inv.voucher_discount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
+                ` : ''}
                 <div style="font-size:20px;font-weight:800;color:var(--primary)">TOTAL: Rs. ${inv.total_amount.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
             </div>
             <div style="text-align:right;color:var(--text-muted);margin-top:5px">Paid: Rs. ${(inv.amount_paid||0).toLocaleString(undefined,{minimumFractionDigits:2})} | Method: ${inv.payment_method||'Cash'}</div>
