@@ -47,16 +47,19 @@ router.post('/', async (req, res) => {
     if (!name || price === undefined) return res.status(400).json({ error: 'Missing required fields' });
     
     // Auto-generate barcode for non-IMEI products if not provided
-    if (!is_imei_tracked && (!barcode || barcode.trim() === '')) {
+    const isImei = String(is_imei_tracked) === 'true';
+    if (!isImei && (!barcode || barcode.trim() === '')) {
         try {
-            const lastProducts = await Product.find({ user_id: req.user._id, barcode: /^\d+$/ });
+            // Find all numeric barcodes for this user to calculate the next sequence
+            const existingBarcodes = await Product.find({ user_id: req.user._id, barcode: /^\d+$/ }).select('barcode');
             let maxNum = 0;
-            lastProducts.forEach(p => {
+            existingBarcodes.forEach(p => {
                 const num = parseInt(p.barcode);
-                if (num > maxNum) maxNum = num;
+                if (!isNaN(num) && num > maxNum) maxNum = num;
             });
             barcode = (maxNum + 1).toString().padStart(3, '0');
         } catch (e) {
+            console.error('Barcode generation error:', e);
             barcode = '001';
         }
     }

@@ -799,24 +799,30 @@ async function loadBarcodePrinter() {
         const res = await api('/products?lite=true');
         if (!res) return;
         const allProducts = await res.json();
-        const filtered = allProducts.filter(p => 
-            p.name.toLowerCase().includes(search) || 
-            p.barcode.toLowerCase().includes(search)
-        );
+        const filtered = allProducts.filter(p => {
+            const nameMatch = (p.name || '').toLowerCase().includes(search);
+            const barcodeMatch = (p.barcode || '').toLowerCase().includes(search);
+            return nameMatch || barcodeMatch;
+        });
 
         const tb = document.querySelector('#barcode-print-table tbody');
         if (tb) {
-            tb.innerHTML = filtered.map(p => `<tr>
-                <td><strong>${p.name}</strong></td>
-                <td><code style="background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-size:12px">${p.barcode || 'NO BARCODE'}</code></td>
-                <td>${p.category}</td>
-                <td>Rs. ${p.price.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="printBarcodeA4('${p.name.replace(/'/g, "\\'")}', '${p.barcode}', ${p.price})" ${!p.barcode ? 'disabled' : ''}>
-                        <i class='bx bx-printer'></i> Print A4
-                    </button>
-                </td>
-            </tr>`).join('');
+            if (filtered.length === 0) {
+                tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No products found</td></tr>';
+                return;
+            }
+            tb.innerHTML = filtered.map(p => `
+                <tr onclick="printBarcodeA4('${p.name.replace(/'/g, "\\'")}', '${p.barcode||''}', ${p.price})" style="cursor:pointer">
+                    <td><strong>${p.name}</strong></td>
+                    <td><code style="background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-size:12px">${p.barcode || '<span style="color:var(--danger)">No Barcode</span>'}</code></td>
+                    <td>${p.category || 'General'}</td>
+                    <td>Rs. ${(p.price||0).toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary">
+                            <i class='bx bx-printer'></i> Print
+                        </button>
+                    </td>
+                </tr>`).join('');
         }
     } catch(e) { console.error(e); }
 }
