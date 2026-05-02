@@ -332,9 +332,12 @@
             <div class="view-head"><h2>Barcode Printing</h2>
                 <div class="view-actions">
                     <div style="display:flex;gap:10px;align-items:center;background:var(--secondary);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border)">
-                        <div class="form-group" style="margin:0"><label style="font-size:10px">W (mm)</label><input type="number" id="barcode-cfg-width" class="form-control" style="width:65px;padding:4px 8px" value="60"></div>
-                        <div class="form-group" style="margin:0"><label style="font-size:10px">H (mm)</label><input type="number" id="barcode-cfg-height" class="form-control" style="width:65px;padding:4px 8px" value="45"></div>
-                        <div class="form-group" style="margin:0"><label style="font-size:10px">Scale</label><input type="number" id="barcode-cfg-scale" class="form-control" style="width:65px;padding:4px 8px" value="2" step="0.1"></div>
+                        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Size:</label>
+                        <select id="barcode-cfg-size" class="form-control" style="width:110px;padding:4px 8px">
+                            <option value="small">Small (4/row)</option>
+                            <option value="medium" selected>Medium (4/row)</option>
+                            <option value="large">Large (3/row)</option>
+                        </select>
                     </div>
                     <button class="btn btn-primary" id="btn-print-barcodes"><i class='bx bx-printer'></i> Print A4 Sheet</button>
                     <button class="btn btn-outline" id="btn-clear-barcode-queue"><i class='bx bx-trash'></i> Clear Queue</button>

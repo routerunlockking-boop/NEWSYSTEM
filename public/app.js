@@ -835,9 +835,7 @@ function setupBarcodePrinting() {
     if (printBtn) printBtn.onclick = printBarcodes;
 
     // Load preferences
-    if (localStorage.getItem('barcode_cfg_width')) document.getElementById('barcode-cfg-width').value = localStorage.getItem('barcode_cfg_width');
-    if (localStorage.getItem('barcode_cfg_height')) document.getElementById('barcode-cfg-height').value = localStorage.getItem('barcode_cfg_height');
-    if (localStorage.getItem('barcode_cfg_scale')) document.getElementById('barcode-cfg-scale').value = localStorage.getItem('barcode_cfg_scale');
+    if (localStorage.getItem('barcode_cfg_size')) document.getElementById('barcode-cfg-size').value = localStorage.getItem('barcode_cfg_size');
 
     const scanInput = document.getElementById('barcode-scan-input');
     if (scanInput) {
@@ -927,14 +925,16 @@ function renderBarcodeQueue() {
 function printBarcodes() {
     if (barcodeQueue.length === 0) return toast('Queue is empty', 'error');
 
-    const w = document.getElementById('barcode-cfg-width').value || 60;
-    const h = document.getElementById('barcode-cfg-height').value || 45;
-    const scale = document.getElementById('barcode-cfg-scale').value || 2;
+    const size = document.getElementById('barcode-cfg-size').value;
+    localStorage.setItem('barcode_cfg_size', size);
 
-    // Save preferences
-    localStorage.setItem('barcode_cfg_width', w);
-    localStorage.setItem('barcode_cfg_height', h);
-    localStorage.setItem('barcode_cfg_scale', scale);
+    // Map presets to dimensions
+    const presets = {
+        small:  { w: 48, h: 28, scale: 1.6, font: 9, svgH: 40 },
+        medium: { w: 48, h: 38, scale: 2.0, font: 10, svgH: 60 },
+        large:  { w: 65, h: 48, scale: 2.4, font: 12, svgH: 80 }
+    };
+    const cfg = presets[size];
 
     const printArea = document.getElementById('print-area');
     printArea.innerHTML = '';
@@ -945,15 +945,15 @@ function printBarcodes() {
         for (let i = 0; i < item.copies; i++) {
             const sticker = document.createElement('div');
             sticker.className = 'barcode-sticker';
-            sticker.style.width = `${w}mm`;
-            sticker.style.height = `${h}mm`;
+            sticker.style.width = `${cfg.w}mm`;
+            sticker.style.height = `${cfg.h}mm`;
             
             const svgId = `barcode-print-${item.id}-${i}-${Math.random().toString(36).substr(2, 5)}`;
             
             sticker.innerHTML = `
-                <div class="sticker-name" style="font-size:${Math.max(8, h/4)}pt">${item.name}</div>
+                <div class="sticker-name" style="font-size:${cfg.font}pt">${item.name}</div>
                 <svg id="${svgId}"></svg>
-                <div class="sticker-price" style="font-size:${Math.max(8, h/5)}pt">Rs. ${(item.price || 0).toFixed(2)}</div>
+                <div class="sticker-price" style="font-size:${cfg.font - 1}pt">Rs. ${(item.price || 0).toFixed(2)}</div>
             `;
             
             printArea.appendChild(sticker);
@@ -967,8 +967,8 @@ function printBarcodes() {
             try {
                 JsBarcode(`#${task.id}`, task.code, {
                     format: "CODE128",
-                    width: parseFloat(scale),
-                    height: h * 1.5, // Relative height
+                    width: cfg.scale,
+                    height: cfg.svgH,
                     displayValue: true,
                     fontSize: 14,
                     margin: 5,
@@ -979,9 +979,11 @@ function printBarcodes() {
 
         setTimeout(() => {
             document.body.classList.add('printing-barcodes');
+            if (size === 'large') document.body.classList.add('size-large');
             window.print();
             setTimeout(() => {
                 document.body.classList.remove('printing-barcodes');
+                document.body.classList.remove('size-large');
             }, 1000);
         }, 500);
     }, 100);
