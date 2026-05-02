@@ -36,6 +36,7 @@ function setupPOS() {
     document.getElementById('pos-paid')?.addEventListener('input', updateBillTotals);
     document.getElementById('pos-manual-discount')?.addEventListener('input', updateBillTotals);
     document.getElementById('btn-apply-voucher')?.addEventListener('click', applyVoucher);
+    document.getElementById('btn-submit-bill')?.addEventListener('click', submitBill);
     
     // Handle customer selection in POS
     document.getElementById('pos-cust-select')?.addEventListener('change', function() {
@@ -432,15 +433,15 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span></div>
-                        ${inv.discount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount</span><span>- Rs. ${inv.discount.toFixed(2)}</span></div>` : ''}
-                        ${inv.voucher_discount > 0 ? `
-                        <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.subtotal_amount - inv.voucher_discount - (inv.discount||0)).toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span></div>
+                        ${(inv.discount || 0) > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>${labels.label_discount || 'Discount'}</span><span>- Rs. ${(inv.discount || 0).toFixed(2)}</span></div>` : ''}
+                        ${(inv.voucher_discount || 0) > 0 ? `
+                        <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code || ''}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.total_amount || 0).toFixed(2)}</span></div>
                         ` : ''}
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
-                        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${(inv.total_amount || 0).toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;"><span>${labels.label_paid || ''}</span><span>${paid.toFixed(2)}</span></div>
                         <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>${labels.label_balance || ''}</span><span>${balance.toFixed(2)}</span></div>
@@ -484,7 +485,7 @@ async function printReceipt(inv) {
                     </div>` : ''}
                     <div style="text-align:right; margin-top:8px; border-bottom:1.5px dashed #000; padding-bottom:8px">
                         <span style="font-size:11px; color:#555">SUBTOTAL:</span>
-                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
+                        <span style="font-size:14px; font-weight:800; margin-left:6px">Rs. ${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
                     </div>
                 </div>
                 
@@ -507,18 +508,18 @@ async function printReceipt(inv) {
                 <div style="font-size:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                         <span>${invSettings.label_subtotal}</span>
-                        <span>${(inv.subtotal_amount || inv.total_amount).toFixed(2)}</span>
+                        <span>${(inv.subtotal_amount || inv.total_amount || 0).toFixed(2)}</span>
                     </div>
-                    ${inv.discount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount</span><span>- Rs. ${inv.discount.toFixed(2)}</span></div>` : ''}
-                    ${inv.voucher_discount > 0 ? `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${inv.voucher_discount.toFixed(2)}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.subtotal_amount - inv.voucher_discount - (inv.discount||0)).toFixed(2)}</span></div>
+                    ${(inv.discount || 0) > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount</span><span>- Rs. ${(inv.discount || 0).toFixed(2)}</span></div>` : ''}
+                    ${(inv.voucher_discount || 0) > 0 ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#555;"><span>Voucher Code</span><span>${inv.voucher_code || ''}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:600;"><span>Voucher Discount</span><span>- Rs. ${(inv.voucher_discount || 0).toFixed(2)}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;border-top:1px solid #ddd;padding-top:4px"><span>Price After Voucher</span><span>Rs. ${(inv.total_amount || 0).toFixed(2)}</span></div>
                     ` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
                         <span>${invSettings.label_total}</span>
-                        <span>${inv.total_amount.toFixed(2)}</span>
+                        <span>${(inv.total_amount || 0).toFixed(2)}</span>
                     </div>
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
@@ -546,11 +547,17 @@ async function printReceipt(inv) {
     
     // window.print blocks the thread. Once the print dialog closes, we hide the area and refocus scanner.
     setTimeout(() => { 
-        window.print(); 
-        pa.style.display = 'none'; 
-        const scanInput = document.getElementById('pos-scan');
-        if (scanInput) scanInput.focus();
-    }, 300);
+        try {
+            window.print(); 
+        } catch(e) {
+            console.error('Print failed:', e);
+            alert('Print failed. Please check your printer connection or browser settings.');
+        } finally {
+            pa.style.display = 'none'; 
+            const scanInput = document.getElementById('pos-scan');
+            if (scanInput) scanInput.focus();
+        }
+    }, 500);
 }
 
 // === WARRANTY ===
