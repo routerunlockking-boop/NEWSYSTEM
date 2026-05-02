@@ -92,25 +92,28 @@ function setupPOS() {
 
 async function loadCashiers() {
     try {
-        const res = await fetch(API + '/auth/cashiers', {
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-        });
-        if (!res.ok) return;
+        const res = await api('/auth/cashiers');
+        if (!res || !res.ok) return;
         const cashiers = await res.json();
         const sel = document.getElementById('pos-cashier-select');
         if (sel) {
             sel.innerHTML = '<option value="">-- Select Cashier --</option>' +
                 cashiers.map(c => `<option value="${c.name}">${c.name} (${c.role})</option>`).join('') +
                 '<option value="__custom__">✏️ Type Name...</option>';
-            // Auto-select the logged-in user
-            const myBiz = localStorage.getItem('pos_business') || '';
+            
+            // Auto-select the logged-in user's business name
+            const myBiz = localStorage.getItem('pos_business');
             if (myBiz) {
-                for (let opt of sel.options) {
-                    if (opt.value === myBiz) { sel.value = myBiz; break; }
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === myBiz) {
+                        sel.selectedIndex = i;
+                        break;
+                    }
                 }
             }
+            
             // Handle custom cashier name toggle
-            sel.addEventListener('change', function() {
+            sel.onchange = function() {
                 const customInput = document.getElementById('pos-cashier-custom');
                 if (this.value === '__custom__') {
                     customInput.style.display = 'block';
@@ -119,7 +122,7 @@ async function loadCashiers() {
                     customInput.style.display = 'none';
                     customInput.value = '';
                 }
-            });
+            };
         }
     } catch(e) { console.error('Failed to load cashiers:', e); }
 }

@@ -799,7 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNav(); 
     setupProductModal(); 
     setupImeiModal(); 
-    setupCategoryModal();
     setupVoucherModal();
     setupStatusModal();
     setupDesigner();
