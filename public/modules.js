@@ -33,8 +33,11 @@ async function loadInventory() {
             <td class="${p.quantity<=10?'text-danger':''}"><strong>${p.quantity}</strong></td>
             <td>Rs. ${(p.cost_price||0).toLocaleString()}</td><td>Rs. ${p.price.toLocaleString()}</td>
             <td>${p.is_imei_tracked?'<span class="badge badge-blue"><i class="bx bx-chip"></i> IMEI</span>':'<span class="badge badge-gray">Normal</span>'}</td>
-            <td><button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')"><i class='bx bx-edit'></i></button>
-                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')"><i class='bx bx-trash'></i></button></td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')" title="Edit"><i class='bx bx-edit'></i></button>
+                ${!p.is_imei_tracked ? `<button class="btn btn-sm btn-outline" onclick="quickPrintBarcode('${p.id}')" title="Print Barcode"><i class='bx bx-barcode'></i></button>` : ''}
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')" title="Delete"><i class='bx bx-trash'></i></button>
+            </td>
         </tr>`).join('');
     } catch(e) { console.error(e); }
 }
@@ -64,6 +67,7 @@ function setupProductModal() {
         if (this.value === '__new__') document.getElementById('prod-category-new').focus();
     });
     document.getElementById('btn-add-product').onclick = async () => {
+        if (!products || products.length === 0) await loadInventory();
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
         await loadCategories();
@@ -71,9 +75,15 @@ function setupProductModal() {
         document.getElementById('prod-normal-fields').style.display = 'block';
         document.getElementById('prod-imei-fields').style.display = 'none';
         
-        // Auto-generate barcode for new product
-        const barcode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
-        document.getElementById('prod-barcode').value = barcode;
+        // Auto-generate barcode for new product (Sequential based on current products)
+        let maxBarcode = 100000000000;
+        if (products && products.length > 0) {
+            products.forEach(p => {
+                const b = parseInt(p.barcode);
+                if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
+            });
+        }
+        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString();
         
         openModal('modal-product');
     };
@@ -114,8 +124,14 @@ function setupProductModal() {
         } catch(e) { toast(e.message,'error'); }
     };
     document.getElementById('btn-gen-barcode').onclick = () => {
-        const barcode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
-        document.getElementById('prod-barcode').value = barcode;
+        let maxBarcode = 100000000000;
+        if (products && products.length > 0) {
+            products.forEach(p => {
+                const b = parseInt(p.barcode);
+                if (!isNaN(b) && b > maxBarcode) maxBarcode = b;
+            });
+        }
+        document.getElementById('prod-barcode').value = (maxBarcode + 1).toString();
         toast('Barcode generated');
     };
 }

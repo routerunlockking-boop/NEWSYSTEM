@@ -424,10 +424,10 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
     
     body.printing-barcodes #print-area {
         display: grid !important;
-        position: absolute; left: 0; top: 0; width: 200mm;
+        position: absolute; left: 0; top: 0; width: 190mm;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1mm; /* Extremely tight gap to fit more rows */
-        padding: 5mm 0;
+        gap: 2mm;
+        padding: 5mm;
         background: white;
         visibility: visible !important;
     }

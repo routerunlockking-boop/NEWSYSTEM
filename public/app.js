@@ -281,6 +281,15 @@ function setupNav() {
     });
 }
 
+// Helper to quickly jump to barcode printing
+window.quickPrintBarcode = function(id) {
+    const link = document.querySelector('.nav-link[data-target="barcode-view"]');
+    if (link) link.click();
+    setTimeout(() => {
+        addToBarcodeQueue(id);
+    }, 100);
+};
+
 // === SCAN MODE ===
 function toggleScanMode() {
     scanModeActive = !scanModeActive;
@@ -930,9 +939,9 @@ function printBarcodes() {
 
     // Optimized presets for scannability
     const presets = {
-        small:  { w: 48, h: 28, barW: 1, barH: 40, font: 8 },
-        medium: { w: 48, h: 38, barW: 2, barH: 60, font: 10 },
-        large:  { w: 65, h: 48, barW: 2, barH: 80, font: 12 }
+        small:  { w: 46, h: 28, barW: 1, barH: 40, font: 8 },
+        medium: { w: 46, h: 38, barW: 2, barH: 60, font: 10 },
+        large:  { w: 62, h: 48, barW: 2, barH: 80, font: 12 }
     };
     const cfg = presets[size];
 
