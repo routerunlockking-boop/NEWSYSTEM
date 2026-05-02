@@ -1,21 +1,54 @@
 // === POS ===
+let lastPosScanTime = 0;
+const POS_SCAN_THROTTLE_MS = 3000;
+
 // Shared scan handler — called from keyboard Enter AND camera scanner
 async function handlePosScan(val) {
     if (!val) return;
+
     // Try IMEI lookup first
     try {
         const res = await api(`/imei/lookup/${encodeURIComponent(val)}`);
         if (res && res.ok) {
             const item = await res.json();
             if (item.status !== 'In Stock') { toast(`IMEI ${val} is ${item.status}`, 'error'); return; }
+            
+            // IMEI uniqueness check (already in bill?)
+            if (imeiInBill.find(i => i.imei_number === item.imei_number)) { 
+                toast('Already in bill', 'error'); 
+                return; 
+            }
+
+            // Throttling check
+            const now = Date.now();
+            if (now - lastPosScanTime < POS_SCAN_THROTTLE_MS) {
+                const remaining = Math.ceil((POS_SCAN_THROTTLE_MS - (now - lastPosScanTime)) / 1000);
+                toast(`Please wait ${remaining}s before next scan`, 'warning');
+                return;
+            }
+
             addImeiToBill(item);
+            lastPosScanTime = Date.now();
             focusScanField();
             return;
         }
     } catch(ex) {}
+
     // Try barcode
     const prod = products.find(p => p.barcode === val);
-    if (prod && !prod.is_imei_tracked) { addToBill(prod); toast(`Added: ${prod.name}`); }
+    if (prod && !prod.is_imei_tracked) {
+        // Throttling check
+        const now = Date.now();
+        if (now - lastPosScanTime < POS_SCAN_THROTTLE_MS) {
+            const remaining = Math.ceil((POS_SCAN_THROTTLE_MS - (now - lastPosScanTime)) / 1000);
+            toast(`Please wait ${remaining}s before next scan`, 'warning');
+            return;
+        }
+
+        addToBill(prod);
+        lastPosScanTime = Date.now();
+        toast(`Added: ${prod.name}`);
+    }
     else if (prod && prod.is_imei_tracked) { toast('IMEI product - scan individual IMEI number', 'error'); }
     else { toast(`Not found: ${val}`, 'error'); }
     focusScanField();
