@@ -55,9 +55,9 @@ router.post('/', async (req, res) => {
                 const num = parseInt(p.barcode);
                 if (num > maxNum) maxNum = num;
             });
-            barcode = (maxNum + 1).toString().padStart(4, '0');
+            barcode = (maxNum + 1).toString().padStart(3, '0');
         } catch (e) {
-            barcode = '0001';
+            barcode = '001';
         }
     }
 

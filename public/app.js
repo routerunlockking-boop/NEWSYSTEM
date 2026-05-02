@@ -832,8 +832,12 @@ window.printBarcodeA4 = function(name, barcode, price) {
     if (!barcode) return toast('No barcode for this product', 'error');
     
     const copies = parseInt(document.getElementById('barcode-copies').value) || 40;
-    const perRow = parseInt(document.getElementById('barcode-per-row').value) || 4;
-    const height = parseInt(document.getElementById('barcode-height').value) || 28;
+    const size = document.getElementById('barcode-size').value;
+    
+    let perRow = 4, height = 35;
+    if (size === 'small') { perRow = 5; height = 25; }
+    else if (size === 'medium') { perRow = 4; height = 35; }
+    else if (size === 'large') { perRow = 2; height = 50; }
 
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     printWindow.document.write(`
@@ -881,13 +885,19 @@ window.printBarcodeA4 = function(name, barcode, price) {
             <script>
                 window.onload = function() {
                     const bc = "${barcode}";
+                    const size = "${size}";
+                    let bcWidth = 2, bcHeight = 40, bcFontSize = 12;
+                    if (size === 'small') { bcWidth = 1.2; bcHeight = 30; bcFontSize = 10; }
+                    else if (size === 'medium') { bcWidth = 1.8; bcHeight = 45; bcFontSize = 14; }
+                    else if (size === 'large') { bcWidth = 2.5; bcHeight = 60; bcFontSize = 18; }
+
                     for (let i = 0; i < ${copies}; i++) {
                         JsBarcode("#barcode-" + i, bc, {
                             format: "CODE128",
-                            width: 2,
-                            height: 40,
+                            width: bcWidth,
+                            height: bcHeight,
                             displayValue: true,
-                            fontSize: 12,
+                            fontSize: bcFontSize,
                             margin: 0,
                             textMargin: 2
                         });
