@@ -233,7 +233,6 @@ async function handleImeiStockScan(rawValue) {
         // Success UI update
         addToScannedQueueUI(imei, false, sltNumber ? `SLT: ${sltNumber}` : '');
         updateScanCount();
-        const isSim = category && category.toLowerCase().includes('sim');
         toast(`${isSim ? 'SIM' : 'IMEI'} scanned: ${imei}`, 'scan');
 
         // Clear SLT number field for next SIM if needed, or keep it? 
