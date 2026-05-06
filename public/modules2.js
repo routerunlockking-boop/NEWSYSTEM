@@ -1,6 +1,6 @@
 // === POS ===
 let lastPosScanTime = 0;
-const POS_SCAN_THROTTLE_MS = 3000;
+const POS_SCAN_THROTTLE_MS = 500;
 
 // Shared scan handler — called from keyboard Enter AND camera scanner
 async function handlePosScan(val) {
@@ -39,8 +39,11 @@ async function handlePosScan(val) {
         }
     } catch(ex) {}
 
-    // 3. Try barcode
-    const prod = products.find(p => p.barcode === val);
+    // 1. Try barcode match
+    const valTrim = val.trim();
+    if (!valTrim) return;
+    
+    const prod = products.find(p => p.barcode === valTrim);
     if (prod && !prod.is_imei_tracked) {
         addToBill(prod);
         toast(`Added: ${prod.name}`);
@@ -58,16 +61,19 @@ async function handlePosScan(val) {
 }
 
 function setupPOS() {
+    loadProducts();
     document.getElementById('pos-scan').addEventListener('keydown', async e => {
         if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const val = e.target.value.trim();
+        const val = e.target.value;
         e.target.value = '';
         await handlePosScan(val);
     });
     document.getElementById('pos-search').addEventListener('input', e => {
         const q = e.target.value.toLowerCase();
-        renderPOSGrid(q);
+        if (posSearchTimeout) clearTimeout(posSearchTimeout);
+        posSearchTimeout = setTimeout(() => {
+            renderPOSGrid(q);
+        }, 150);
     });
     document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
     document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
@@ -157,7 +163,7 @@ async function loadCashiers() {
     } catch(e) { console.error('Failed to load cashiers:', e); }
 }
 
-async function loadPOS() {
+async function loadProducts() {
     try {
         const res = await api(`/products?lite=true&_t=${Date.now()}`);
         if (res) products = await res.json();
@@ -169,11 +175,12 @@ function renderPOSGrid(q) {
     const grid = document.getElementById('pos-products');
     const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q));
     grid.innerHTML = filtered.map(p => `
-        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `toast('Scan IMEI for this product','error')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false})`}">
+        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `showImeiSelectionModal('${p.id}', '${p.name.replace(/'/g,"\\'")}')` : `addToBill('${p.id}')`}">
             <h4>${p.name}</h4>
             <div class="price">Rs. ${p.price.toLocaleString()}</div>
-            <div class="stock">Stock: ${p.quantity}</div>
-            ${p.is_imei_tracked ? '<div class="imei-badge">IMEI Tracked</div>' : ''}
+            <div class="stock">${p.quantity} in stock</div>
+            ${p.barcode ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">#${p.barcode}</div>` : ''}
+            ${p.is_imei_tracked ? `<span class="imei-badge"><i class='bx bx-chip'></i> Select IMEI</span>` : ''}
         </div>`).join('');
 }
 
@@ -232,6 +239,54 @@ function showLastScanned(val) {
         // Let's keep it until next scan.
     }
 }
+
+let availableImeis = [];
+async function showImeiSelectionModal(prodId, prodName) {
+    const nameEl = document.getElementById('select-imei-prod-name');
+    if (nameEl) nameEl.textContent = prodName;
+    const listEl = document.getElementById('imei-selection-list');
+    if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center"><i class="bx bx-loader-alt bx-spin"></i> Loading...</div>';
+    const searchEl = document.getElementById('imei-selection-search');
+    if (searchEl) searchEl.value = '';
+    openModal('modal-select-imei');
+    
+    try {
+        const res = await api(`/imei?product_id=${prodId}&status=In Stock`);
+        if (!res) return;
+        availableImeis = await res.json();
+        renderImeiSelectionList();
+    } catch(e) {
+        toast('Failed to load IMEIs', 'error');
+    }
+}
+
+function renderImeiSelectionList(q = '') {
+    const el = document.getElementById('imei-selection-list');
+    if (!el) return;
+    const filtered = availableImeis.filter(i => !q || i.imei_number.toLowerCase().includes(q.toLowerCase()));
+    
+    if (filtered.length === 0) {
+        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No IMEIs available</div>';
+        return;
+    }
+    
+    el.innerHTML = filtered.map(i => `
+        <div class="imei-select-item" onclick="selectImeiFromModal('${i.imei_number}')" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:var(--transition)">
+            <strong>${i.imei_number}</strong>
+            <i class='bx bx-chevron-right' style="color:var(--text-muted)"></i>
+        </div>
+    `).join('');
+}
+
+async function selectImeiFromModal(imei) {
+    closeModal('modal-select-imei');
+    await handlePosScan(imei);
+}
+
+// Search listener for IMEI selection
+document.getElementById('imei-selection-search')?.addEventListener('input', e => {
+    renderImeiSelectionList(e.target.value);
+});
 
 function renderBill() {
     const el = document.getElementById('bill-items');

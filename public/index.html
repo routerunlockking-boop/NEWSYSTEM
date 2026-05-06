@@ -573,5 +573,22 @@
 <script src="/modules.js"></script>
 <script src="/modules2.js"></script>
 <script src="/app.js"></script>
+    <!-- SELECT IMEI MODAL -->
+    <div class="modal-bg" id="modal-select-imei">
+        <div class="modal">
+            <div class="modal-head"><h3>Select IMEI - <span id="select-imei-prod-name"></span></h3><button class="close-btn" onclick="closeModal('modal-select-imei')">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" id="imei-selection-search" class="form-control" placeholder="Search IMEI...">
+                </div>
+                <div id="imei-selection-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm)">
+                    <!-- List items here -->
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-outline" onclick="closeModal('modal-select-imei')">Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

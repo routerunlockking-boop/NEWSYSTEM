@@ -84,6 +84,9 @@ const ProductSchema = new mongoose.Schema({
     supplier: { type: String, default: '' }
 });
 
+ProductSchema.index({ barcode: 1 });
+ProductSchema.index({ name: 'text' });
+
 // Status history entry for IMEI items
 const StatusHistorySchema = new mongoose.Schema({
     status: { type: String, required: true },

@@ -27,6 +27,12 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.imei-select-item:hover {
+    background-color: var(--secondary) !important;
+    padding-left: 20px !important;
+    color: var(--primary);
+}
+
 body.dark-mode {
     --secondary: #1e293b;
     --bg-body: #0c1222;
