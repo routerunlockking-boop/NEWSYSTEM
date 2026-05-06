@@ -25,6 +25,17 @@ app.use('/api', (req, res, next) => {
     next();
 });
 
+// Health check
+app.get('/api/status', async (req, res) => {
+    try {
+        const state = mongoose.connection.readyState;
+        const status = ['disconnected', 'connected', 'connecting', 'disconnecting'][state];
+        res.json({ status, database: status === 'connected' ? 'OK' : 'Error' });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
+
 // Auth routes (public)
 app.use('/api/auth', require('./routes/auth'));
 

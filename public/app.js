@@ -248,7 +248,26 @@ function checkAuth() {
                 switchView('pos-view');
             }
         }
-    } else { document.getElementById('auth-overlay').classList.add('active'); }
+    } else { 
+        document.getElementById('auth-overlay').classList.add('active'); 
+        checkSystemStatus();
+    }
+}
+
+async function checkSystemStatus() {
+    const el = document.getElementById('db-status');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.database === 'OK') {
+            el.innerHTML = '<span style="color:#10b981"><i class="bx bxs-circle"></i> System Online</span>';
+        } else {
+            el.innerHTML = '<span style="color:#ef4444"><i class="bx bxs-circle"></i> System Offline (DB Error)</span>';
+        }
+    } catch (e) {
+        el.innerHTML = '<span style="color:#ef4444"><i class="bx bxs-circle"></i> System Offline (Server Error)</span>';
+    }
 }
 
 async function loadDashboard() {
