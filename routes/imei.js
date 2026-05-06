@@ -24,6 +24,8 @@ router.get('/', async (req, res) => {
         if (search) {
             qf.$or = [
                 { imei_number: new RegExp(search, 'i') },
+                { sim_serial_number: new RegExp(search, 'i') },
+                { slt_number: new RegExp(search, 'i') },
                 { customer_name: new RegExp(search, 'i') },
                 { customer_phone: new RegExp(search, 'i') },
                 { customer_nic: new RegExp(search, 'i') }
@@ -150,6 +152,56 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Add items in bulk with custom fields (IMEI, SIM Serial, SLT Num)
+router.post('/bulk', async (req, res) => {
+    const { product_id, items, purchase_price, selling_price, warranty_months } = req.body;
+    if (!product_id || !items || !items.length) {
+        return res.status(400).json({ error: 'Product ID and items are required' });
+    }
+    try {
+        const product = await Product.findById(product_id);
+        if (!product) return res.status(404).json({ error: 'Product not found' });
+
+        const results = [];
+        const errors = [];
+        for (const it of items) {
+            const imei = it.imei_number?.trim();
+            if (!imei) continue;
+
+            const existing = await ImeiItem.findOne({ imei_number: imei });
+            if (existing) {
+                errors.push(`IMEI/Serial ${imei} already exists`);
+                continue;
+            }
+
+            const newItem = await ImeiItem.create({
+                user_id: req.user._id,
+                product_id: product._id,
+                imei_number: imei,
+                sim_serial_number: it.sim_serial_number || '',
+                slt_number: it.slt_number || '',
+                purchase_price: purchase_price || product.cost_price || 0,
+                selling_price: selling_price || product.price || 0,
+                warranty_months: warranty_months || product.warranty_months || 12,
+                status: 'In Stock',
+                received_date: new Date(),
+                status_history: [{
+                    status: 'In Stock',
+                    date: new Date(),
+                    notes: 'Item received into inventory',
+                    changed_by: req.user.business_name || 'System'
+                }]
+            });
+            results.push(newItem);
+        }
+
+        await syncProductStock(product_id);
+        res.status(201).json({ added: results.length, errors });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Update IMEI status (warranty claims, returns, etc.)
 router.put('/:id/status', async (req, res) => {
     const { status, notes, send_email, send_sms } = req.body;
@@ -232,6 +284,8 @@ router.put('/:id/sell', async (req, res) => {
         item.warranty_start_date = now;
         item.warranty_expiry_date = warrantyExpiry;
         if (selling_price !== undefined) item.selling_price = selling_price;
+        if (req.body.sim_type) item.sim_type = req.body.sim_type;
+        if (req.body.slt_number) item.slt_number = req.body.slt_number;
 
         item.status_history.push({
             status: 'Sold',

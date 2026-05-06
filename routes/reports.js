@@ -65,6 +65,9 @@ router.get('/slt', async (req, res) => {
         res.json(items.map(i => ({
             id: i._id.toString(),
             imei_number: i.imei_number,
+            sim_serial: i.sim_serial_number,
+            slt_number: i.slt_number,
+            sim_type: i.sim_type,
             product_name: i.product_id ? i.product_id.name : 'Unknown',
             product_category: i.product_id ? i.product_id.category : '',
             customer_name: i.customer_name,
@@ -107,17 +110,16 @@ router.get('/slt/export', async (req, res) => {
 
         const data = items.map((i, idx) => ({
             'No.': idx + 1,
-            'IMEI Number': i.imei_number,
+            'DATE': i.sold_date ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' }).format(i.sold_date) : '',
+            'Customer Name': i.customer_name || '-',
+            'Phone Number': i.customer_phone || '-',
+            'NIC Number': i.customer_nic || '-',
+            'SIM Type': i.sim_type || '-',
             'Router Model': i.product_id ? i.product_id.name : 'Unknown',
-            'Category': i.product_id ? i.product_id.category : '',
-            'Customer Name': i.customer_name,
-            'Address': i.customer_address,
-            'Phone Number': i.customer_phone,
-            'NIC Number': i.customer_nic,
-            'Purchase Date': i.sold_date ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' }).format(i.sold_date) : '',
-            'Warranty (Months)': i.warranty_months,
-            'Warranty Expiry': i.warranty_expiry_date ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' }).format(i.warranty_expiry_date) : '',
-            'Selling Price': i.selling_price,
+            'IMEI Number': i.imei_number || i.sim_serial_number || '-',
+            'SLT Number': i.slt_number || '-',
+            'Warranty Expiry': i.warranty_expiry_date ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' }).format(i.warranty_expiry_date) : '-',
+            'Selling Price': i.selling_price || 0,
             'Status': i.status
         }));
 
@@ -126,9 +128,9 @@ router.get('/slt/export', async (req, res) => {
 
         // Set column widths
         ws['!cols'] = [
-            { wch: 5 }, { wch: 20 }, { wch: 25 }, { wch: 15 },
-            { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 },
-            { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 }
+            { wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 15 },
+            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 20 },
+            { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 10 }
         ];
 
         const sheetName = month ? `SLT Report ${month}` : 'SLT Report';

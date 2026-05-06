@@ -98,7 +98,10 @@ const StatusHistorySchema = new mongoose.Schema({
 const ImeiItemSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    imei_number: { type: String, required: true, unique: true },
+    imei_number: { type: String, default: '' },
+    sim_serial_number: { type: String, default: '' },
+    slt_number: { type: String, default: '' },
+    sim_type: { type: String, enum: ['', 'POSTPAID', 'PREPAID'], default: '' },
     purchase_price: { type: Number, default: 0 },
     selling_price: { type: Number, default: 0 },
     warranty_months: { type: Number, default: 12 },
