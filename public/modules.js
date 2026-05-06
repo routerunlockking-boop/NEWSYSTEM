@@ -167,7 +167,7 @@ async function loadImeiList() {
         const tb = document.querySelector('#imei-table tbody');
         tb.innerHTML = items.map(i => `<tr>
             <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code>
-                ${i.product_category === 'SIM Cards' ? `<br><small class="text-primary">SLT: ${i.slt_number || '-'}</small>` : ''}</td>
+                ${(i.product_category && i.product_category.toLowerCase().includes('sim')) ? `<br><small class="text-primary">SLT: ${i.slt_number || '-'}</small>` : ''}</td>
             <td>${i.product_name}</td>
             <td>${statusBadge(i.status)}</td>
             <td>${i.customer_name||'-'}<br><small style="color:var(--text-muted)">${i.customer_phone||''}</small></td>
@@ -228,7 +228,8 @@ async function handleImeiStockScan(rawValue) {
         // Success UI update
         addToScannedQueueUI(imei, false, sltNumber ? `SLT: ${sltNumber}` : '');
         updateScanCount();
-        toast(`${category === 'SIM Cards' ? 'SIM' : 'IMEI'} scanned: ${imei}`, 'scan');
+        const isSim = category && category.toLowerCase().includes('sim');
+        toast(`${isSim ? 'SIM' : 'IMEI'} scanned: ${imei}`, 'scan');
 
         // Clear SLT number field for next SIM if needed, or keep it? 
         // User might be scanning many SIMs with different SLT numbers.
@@ -271,7 +272,7 @@ function setupImeiModal() {
             document.getElementById('imei-warranty').value = opt.dataset.warranty || 12;
             
             // Show SIM fields if category is SIM Cards
-            const isSim = opt.dataset.category === 'SIM Cards';
+            const isSim = opt.dataset.category && opt.dataset.category.toLowerCase().includes('sim');
             document.getElementById('sim-stock-fields').style.display = isSim ? 'block' : 'none';
         };
         sel.dispatchEvent(new Event('change'));
@@ -307,12 +308,13 @@ function setupImeiModal() {
         btn.innerHTML = '<i class="bx bx-loader bx-spin"></i> Saving...';
 
         const category = document.getElementById('imei-product').selectedOptions[0]?.dataset.category || '';
+        const isSim = category && category.toLowerCase().includes('sim');
 
         const data = {
             product_id: document.getElementById('imei-product').value,
             items: uniqueItems.map(i => ({
                 imei_number: i.val,
-                sim_serial_number: category === 'SIM Cards' ? i.val : '',
+                sim_serial_number: isSim ? i.val : '',
                 slt_number: i.slt || ''
             })),
             purchase_price: parseFloat(document.getElementById('imei-purchase-price').value)||0,
@@ -376,7 +378,7 @@ async function viewImeiDetail(id) {
                 <div><label style="font-size:12px;color:var(--text-muted)">Selling Price</label><p>Rs. ${(item.selling_price||0).toLocaleString()}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">Received</label><p>${formatDate(item.received_date)}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">Sold Date</label><p>${item.sold_date?formatDate(item.sold_date):'-'}</p></div>
-                ${item.product_category === 'SIM Cards' ? `
+                ${(item.product_category && item.product_category.toLowerCase().includes('sim')) ? `
                 <div><label style="font-size:12px;color:var(--text-muted)">SIM Serial</label><p style="font-family:monospace">${item.sim_serial_number || '-'}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">SLT Number</label><p>${item.slt_number || '-'}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">SIM Type</label><p>${item.sim_type || '-'}</p></div>

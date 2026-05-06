@@ -108,7 +108,7 @@ function renderImeiSelectorList(q) {
     listEl.innerHTML = filtered.map(i => `
         <div class="imei-select-item" onclick="selectImeiFromList('${i.id}')" style="padding:12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition: all 0.2s;">
             <div style="font-family:monospace; font-weight:700; color:var(--primary)">${i.imei_number}</div>
-            ${i.product_category === 'SIM Cards' ? `
+            ${(i.product_category && i.product_category.toLowerCase().includes('sim')) ? `
                 <div style="font-size:12px; display:flex; gap:10px; margin-top:4px">
                     <span><i class='bx bx-hash'></i> SLT: ${i.slt_number || '-'}</span>
                     <span><i class='bx bx-barcode'></i> SIM: ${i.sim_serial_number || '-'}</span>
@@ -237,7 +237,7 @@ function renderPOSGrid(q) {
     const grid = document.getElementById('pos-products');
     const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q));
     grid.innerHTML = filtered.map(p => `
-        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `showImeiSelector('${p.id}', '${p.name.replace(/'/g,"\\'")}')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false})`}">
+        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `showImeiSelector('${p.id}', '${p.name.replace(/'/g,"\\'")}')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false,category:'${(p.category||"").replace(/'/g,"\\'")}'})`}">
             <h4>${p.name}</h4>
             <div class="price">Rs. ${p.price.toLocaleString()}</div>
             <div class="stock">Stock: ${p.quantity}</div>
@@ -248,15 +248,36 @@ function renderPOSGrid(q) {
 function addToBill(prod) {
     const existing = currentBill.find(b => b.name === prod.name && !b.is_imei_item);
     if (existing) { existing.quantity++; } 
-    else { currentBill.push({ name: prod.name, price: prod.price, quantity: 1, is_imei_item: false }); }
+    else { 
+        let price = prod.price;
+        const isSim = prod.category && prod.category.toLowerCase().includes('sim');
+        if (isSim) {
+            const p = prompt(`Enter price for SIM (${prod.name}):`, price);
+            if (p !== null && !isNaN(parseFloat(p))) {
+                price = parseFloat(p);
+            }
+        }
+        currentBill.push({ name: prod.name, price: price, quantity: 1, is_imei_item: false, category: prod.category }); 
+    }
     renderBill();
 }
 
 function addImeiToBill(item) {
     if (imeiInBill.find(i => i.imei_number === item.imei_number)) { toast('Already in bill', 'error'); return; }
+    
+    let price = item.selling_price;
+    const isSim = item.product_category && item.product_category.toLowerCase().includes('sim');
+    
+    if (isSim) {
+        const p = prompt(`Enter price for SIM (${item.imei_number}):`, price);
+        if (p !== null && !isNaN(parseFloat(p))) {
+            price = parseFloat(p);
+        }
+    }
+
     currentBill.push({ 
         name: item.product_name, 
-        price: item.selling_price, 
+        price: price, 
         quantity: 1, 
         is_imei_item: true, 
         imei_number: item.imei_number, 
@@ -281,13 +302,16 @@ function addImeiToBill(item) {
 function renderBill() {
     const el = document.getElementById('bill-items');
     el.innerHTML = currentBill.map((b, i) => {
-        const isSim = b.category === 'SIM Cards';
+        const isSim = b.category && b.category.toLowerCase().includes('sim');
         return `
         <div class="bill-item" style="${isSim ? 'border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.05);' : ''}">
             <div class="bill-item-info">
                 <h4>${b.name}</h4>
                 <p>
-                    <span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> 
+                    ${isSim ? 
+                        `<span style="font-size:11px;font-weight:600;color:var(--primary);margin-right:4px">Price:</span><input type="number" step="0.01" class="form-control form-control-sm" style="width:100px; display:inline-block; font-weight:800; border:1px solid var(--primary); padding:2px 6px; height:28px" value="${b.price}" oninput="updateBillPrice(${i}, this.value)">` 
+                        : `<span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span>`
+                    }
                     ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}
                 </p>
                 ${isSim ? `
@@ -329,6 +353,14 @@ function renderBill() {
 
 function updateBillSimField(i, field, val) {
     currentBill[i][field] = val;
+}
+
+function updateBillPrice(i, val) {
+    const p = parseFloat(val);
+    if (!isNaN(p)) {
+        currentBill[i].price = p;
+        updateBillTotals();
+    }
 }
 
 function editBillPrice(i) {
@@ -378,7 +410,7 @@ async function submitBill() {
         items: currentBill.map(b => ({ 
             name: b.name, price: b.price, quantity: b.quantity, 
             is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '',
-            sim_serial_number: b.category === 'SIM Cards' ? b.imei_number : '',
+            sim_serial_number: (b.category && b.category.toLowerCase().includes('sim')) ? b.imei_number : '',
             slt_number: b.slt_number || '',
             sim_type: b.sim_type || '',
             sim_payment_type: b.sim_payment_type || '',
