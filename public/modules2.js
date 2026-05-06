@@ -333,7 +333,11 @@ function renderBill() {
                             <option value="PREPAID" ${b.sim_payment_type==='PREPAID'?'selected':''}>PREPAID</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-bottom:0; grid-column: span 2">
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:10px">SIM / SLT Number</label>
+                        <input type="text" class="form-control form-control-sm" value="${b.slt_number}" placeholder="SIM/SLT Number" oninput="updateBillSimField(${i}, 'slt_number', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
                         <label style="font-size:10px">Router Model</label>
                         <input type="text" class="form-control form-control-sm" value="${b.router_model}" placeholder="Router Model" oninput="updateBillSimField(${i}, 'router_model', this.value)">
                     </div>

@@ -207,8 +207,13 @@ async function handleImeiStockScan(rawValue) {
             return;
         }
 
-        const sltNumber = document.getElementById('imei-slt-number').value.trim();
+        let sltNumber = document.getElementById('imei-slt-number').value.trim();
         const category = document.getElementById('imei-product').selectedOptions[0]?.dataset.category || '';
+        const isSim = category && category.toLowerCase().includes('sim');
+        
+        if (isSim && !sltNumber) {
+            sltNumber = prompt(`Enter SLT / SIM Number for serial ${imei}:`) || '';
+        }
         
         // Add to queue immediately
         scannedImeiQueue.push({ val: imei, slt: sltNumber });
