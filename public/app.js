@@ -7,6 +7,8 @@ let hasImeiInBill = false;
 let scanModeActive = false;
 let voucherDiscount = 0;
 let voucherCode = '';
+let voucherType = ''; // 'percentage' or 'fixed'
+let voucherValue = 0;
 
 // === UTILITY ===
 function toast(msg, type='success') {
@@ -276,6 +278,7 @@ function setupNav() {
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
             if(target==='barcode-view') loadBarcodePrinter();
+            if(target==='vouchers-view') loadVouchers();
             if(target==='slt-view') { /* ready for generate */ }
         };
     });
@@ -976,8 +979,9 @@ function setupAll() {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
-    setupBarcodePrinter();
+    setupBarcodePrinter(); setupVoucherModal();
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
     setupAll();
@@ -990,6 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentBill.length && !confirm('Clear the current bill?')) return;
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         voucherDiscount = 0; voucherCode = '';
+        voucherType = ''; voucherValue = 0;
         document.getElementById('pos-customer-box').style.display = 'none';
         const custBtn = document.getElementById('btn-toggle-customer');
         if (custBtn) { custBtn.classList.remove('btn-primary'); custBtn.classList.add('btn-outline'); }

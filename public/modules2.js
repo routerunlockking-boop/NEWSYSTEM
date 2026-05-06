@@ -185,10 +185,35 @@ function setupPOS() {
         }
     });
 
-    // Load customers for the dropdown
-    loadCustomers();
-    // Load cashiers for the dropdown
     loadCashiers();
+    
+    document.getElementById('btn-apply-voucher')?.addEventListener('click', applyVoucher);
+}
+
+async function applyVoucher() {
+    const code = document.getElementById('pos-voucher').value.trim();
+    if (!code) return;
+    
+    try {
+        const res = await api('/vouchers/validate', { method: 'POST', body: JSON.stringify({ code }) });
+        if (!res) return;
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Invalid voucher');
+        
+        voucherCode = d.code;
+        voucherType = d.discount_type;
+        voucherValue = d.discount_value;
+        
+        toast(`Voucher applied: ${voucherCode}`);
+        updateBillTotals();
+    } catch(e) { 
+        toast(e.message, 'error');
+        voucherCode = '';
+        voucherType = '';
+        voucherValue = 0;
+        voucherDiscount = 0;
+        updateBillTotals();
+    }
 }
 
 async function loadCashiers() {
@@ -388,9 +413,30 @@ function removeBillItem(i) {
 }
 
 function updateBillTotals() {
-    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    
+    if (voucherCode) {
+        if (voucherType === 'percentage') {
+            voucherDiscount = (subtotal * voucherValue) / 100;
+        } else {
+            voucherDiscount = voucherValue;
+        }
+    } else {
+        voucherDiscount = 0;
+    }
+
+    const total = Math.max(0, subtotal - voucherDiscount);
     const paid = parseFloat(document.getElementById('pos-paid').value) || 0;
-    document.getElementById('pos-subtotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
+    
+    document.getElementById('pos-subtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits:2});
+    
+    if (voucherDiscount > 0) {
+        document.getElementById('voucher-discount-row').style.display = 'flex';
+        document.getElementById('pos-discount').textContent = '-' + voucherDiscount.toLocaleString(undefined, {minimumFractionDigits:2});
+    } else {
+        document.getElementById('voucher-discount-row').style.display = 'none';
+    }
+    
     document.getElementById('pos-total').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
     document.getElementById('pos-balance').textContent = (paid - total).toLocaleString(undefined, {minimumFractionDigits:2});
 }
@@ -409,7 +455,8 @@ async function submitBill() {
         const caddr = document.getElementById('pos-cust-address').value.trim();
         if (!cn || !cp || !cnic || !caddr) { toast('Customer details required for IMEI items', 'error'); return; }
     }
-    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const total = Math.max(0, subtotal - voucherDiscount);
     const data = {
         items: currentBill.map(b => ({ 
             name: b.name, price: b.price, quantity: b.quantity, 
@@ -421,6 +468,7 @@ async function submitBill() {
             router_model: b.router_model || ''
         })),
         imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
+        subtotal_amount: subtotal,
         total_amount: total,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
         payment_method: document.getElementById('pos-payment').value,
@@ -429,7 +477,9 @@ async function submitBill() {
         customer_phone: document.getElementById('pos-cust-phone').value || '',
         customer_nic: document.getElementById('pos-cust-nic').value || '',
         customer_email: document.getElementById('pos-cust-email').value || '',
-        customer_address: document.getElementById('pos-cust-address').value || ''
+        customer_address: document.getElementById('pos-cust-address').value || '',
+        voucher_code: voucherCode,
+        voucher_discount: voucherDiscount
     };
     try {
         const res = await api('/invoices', { method: 'POST', body: JSON.stringify(data) });
@@ -450,6 +500,9 @@ async function submitBill() {
         document.getElementById('pos-cust-nic').value = '';
         document.getElementById('pos-cust-email').value = '';
         document.getElementById('pos-cust-address').value = '';
+        voucherCode = ''; voucherDiscount = 0;
+        document.getElementById('pos-voucher').value = '';
+        document.getElementById('voucher-discount-row').style.display = 'none';
         renderBill(); loadPOS();
         loadCustomers(); // Reload customers to show any newly added one
         loadInventory(); // Update stock in the inventory UI
@@ -559,7 +612,8 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.subtotal_amount ? inv.subtotal_amount.toFixed(2) : inv.total_amount.toFixed(2)}</span></div>
+                        ${inv.voucher_discount ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount (${inv.voucher_code})</span><span>-${inv.voucher_discount.toFixed(2)}</span></div>` : ''}
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
@@ -624,8 +678,13 @@ async function printReceipt(inv) {
                 <div style="font-size:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                         <span>${invSettings.label_subtotal}</span>
-                        <span>${inv.total_amount.toFixed(2)}</span>
+                        <span>${(inv.subtotal_amount || inv.total_amount + (inv.voucher_discount || 0)).toFixed(2)}</span>
                     </div>
+                    ${inv.voucher_discount ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>Discount (${inv.voucher_code})</span>
+                        <span>-${inv.voucher_discount.toFixed(2)}</span>
+                    </div>` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
                         <span>${invSettings.label_total}</span>
