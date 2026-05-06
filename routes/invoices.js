@@ -180,6 +180,8 @@ router.post('/', async (req, res) => {
                         if (billItem.sim_type) imeiItem.sim_type = billItem.sim_type;
                         if (billItem.sim_payment_type) imeiItem.sim_payment_type = billItem.sim_payment_type;
                         if (billItem.router_model) imeiItem.router_model = billItem.router_model;
+                        if (billItem.slt_number) imeiItem.slt_number = billItem.slt_number;
+                        if (billItem.sim_serial_number) imeiItem.sim_serial_number = billItem.sim_serial_number;
                     }
 
                     imeiItem.status_history.push({
