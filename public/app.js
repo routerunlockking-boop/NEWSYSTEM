@@ -65,7 +65,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
         const d = await res.json();
         if (!res.ok) {
             console.error('Login failed:', d.error);
-            throw new Error(d.error);
+            throw new Error(`Login failed (${res.status}): ${d.error}`);
         }
         token=d.token; bizName=d.business_name; role=d.role;
         localStorage.setItem('pos_token',token); localStorage.setItem('pos_business',bizName); localStorage.setItem('pos_role',role);
@@ -236,14 +236,18 @@ function checkAuth() {
     if (token) {
         document.getElementById('auth-overlay').classList.remove('active');
         document.getElementById('biz-name').textContent = bizName;
-        if (role === 'admin') { 
-            document.getElementById('nav-admin-item').style.display='block'; 
-            document.getElementById('nav-admin-divider').style.display='block'; 
-        } else {
+        if (role === 'admin') {
+            document.getElementById('nav-admin-item').style.display='flex'; 
+            document.getElementById('nav-admin-divider').style.display='block';
+            if (currentView === 'dashboard-view') loadDashboard();
+        } else { 
             document.getElementById('nav-admin-item').style.display='none'; 
             document.getElementById('nav-admin-divider').style.display='none'; 
+            if (currentView === 'dashboard-view') {
+                // Cashiers shouldn't see dashboard, switch to POS
+                switchView('pos-view');
+            }
         }
-        loadDashboard();
     } else { document.getElementById('auth-overlay').classList.add('active'); }
 }
 
@@ -339,31 +343,38 @@ function updateClock() { document.getElementById('clock').textContent = new Date
 
 // === NAVIGATION ===
 let currentView = 'dashboard-view';
+function switchView(target) {
+    const link = document.querySelector(`.nav-link[data-target="${target}"]`);
+    if (!link) return;
+    
+    document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+    link.classList.add('active');
+    
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const targetEl = document.getElementById(target);
+    if (targetEl) targetEl.classList.add('active');
+    
+    document.getElementById('page-title').textContent = link.dataset.title || 'POS';
+    currentView = target;
+    
+    if(target==='dashboard-view' && role === 'admin') loadDashboard();
+    if(target==='inventory-view') loadInventory();
+    if(target==='pos-view') { loadPOS(); focusScanField(); }
+    if(target==='imei-view') loadImeiList();
+    if(target==='invoice-view') loadInvoices();
+    if(target==='customer-view') loadCustomers();
+    if(target==='report-view') loadReports();
+    if(target==='admin-view') loadAdmin();
+}
+
 function setupNav() {
     document.querySelectorAll('.nav-link').forEach(link => {
         link.onclick = e => {
             e.preventDefault();
-            document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
-            link.classList.add('active');
-            const target = link.dataset.target;
-            document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-            document.getElementById(target).classList.add('active');
-            document.getElementById('page-title').textContent = link.dataset.title;
-            currentView = target;
-            if(target==='dashboard-view') loadDashboard();
-            if(target==='inventory-view') loadInventory();
-            if(target==='pos-view') { loadPOS(); focusScanField(); }
-            if(target==='imei-view') loadImeiList();
-            if(target==='customers-view') loadCustomers();
-            if(target==='suppliers-view') loadSuppliers();
-            if(target==='invoices-view') loadInvoices();
-            if(target==='design-view') loadInvoiceDesigner();
-            if(target==='reports-view') loadReports('sales');
-            if(target==='admin-view') loadAdmin();
-            if(target==='barcode-view') loadBarcodePrinter();
-            if(target==='slt-view') { /* ready for generate */ }
+            switchView(link.dataset.target);
         };
     });
+}
 }
 
 // === SCAN MODE ===

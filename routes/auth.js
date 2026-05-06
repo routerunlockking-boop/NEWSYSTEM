@@ -24,8 +24,7 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
     try {
-        const lowerEmail = email.toLowerCase();
-        const user = await User.findOne({ email: lowerEmail, password });
+        const user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') }, password });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
         if (!user.is_active && user.role !== 'admin') {
             return res.status(403).json({ error: 'Account pending admin approval' });

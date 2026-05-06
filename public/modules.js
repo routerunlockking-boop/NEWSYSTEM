@@ -1,30 +1,3 @@
-// === UTILS ===
-async function api(path, options = {}) {
-    if (!token) return;
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    try {
-        const res = await fetch(API + path, { ...options, headers });
-        if (res.status === 401) { localStorage.clear(); location.reload(); return; }
-        return res;
-    } catch(e) { toast(e.message, 'error'); }
-}
-function toast(msg, type='success') {
-    const t = document.createElement('div');
-    t.className = `toast toast-${type}`;
-    t.innerHTML = `<i class='bx ${type==='error'?'bx-error-circle':type==='scan'?'bx-barcode-reader':'bx-check-circle'}'></i> ${msg}`;
-    document.body.appendChild(t);
-    setTimeout(() => t.classList.add('show'), 10);
-    setTimeout(() => { t.classList.remove('show'); setTimeout(()=>t.remove(), 300); }, 3000);
-}
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-function formatDate(d) { return new Date(d).toLocaleDateString(); }
-function sanitizeBarcode(s) { return s.trim().replace(/[^a-zA-Z0-9]/g, ''); }
-function statusBadge(s) {
-    const colors = { 'In Stock': 'badge-green', 'Sold': 'badge-blue', 'Returned': 'badge-red', 'Under Repair': 'badge-warning' };
-    return `<span class="badge ${colors[s] || 'badge-outline'}">${s}</span>`;
-}
-
 // === INVENTORY ===
 let products = [];
 async function loadInventory() {
