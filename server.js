@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -8,7 +9,9 @@ const PORT = process.env.PORT || 3000;
 
 // Connect to MongoDB
 if (process.env.NODE_ENV !== 'production') {
-    connectDB().then(() => { initializeDatabase(); });
+    connectDB()
+        .then(() => { initializeDatabase(); })
+        .catch(err => { console.error('FAILED TO CONNECT TO MONGODB:', err.message); });
 }
 
 // Middleware

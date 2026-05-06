@@ -8,10 +8,11 @@ router.post('/register', async (req, res) => {
     if (!email || !password || !business_name) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
+    const lowerEmail = email.toLowerCase();
     try {
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: lowerEmail });
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
-        await User.create({ email, password, business_name, whatsapp_number, is_active: false });
+        await User.create({ email: lowerEmail, password, business_name, whatsapp_number, is_active: false });
         res.status(201).json({ message: 'Account creation successful. Pending admin approval.' });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -23,7 +24,8 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
     try {
-        const user = await User.findOne({ email, password });
+        const lowerEmail = email.toLowerCase();
+        const user = await User.findOne({ email: lowerEmail, password });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
         if (!user.is_active && user.role !== 'admin') {
             return res.status(403).json({ error: 'Account pending admin approval' });

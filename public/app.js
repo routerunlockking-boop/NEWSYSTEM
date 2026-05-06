@@ -57,15 +57,24 @@ function sanitizeBarcode(raw) {
 document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
+        console.log('Attempting login for:', document.getElementById('login-email').value);
         const res = await fetch(API+'/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ email:document.getElementById('login-email').value, password:document.getElementById('login-password').value })
         });
+        console.log('Login response status:', res.status);
         const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
+        if (!res.ok) {
+            console.error('Login failed:', d.error);
+            throw new Error(d.error);
+        }
         token=d.token; bizName=d.business_name; role=d.role;
         localStorage.setItem('pos_token',token); localStorage.setItem('pos_business',bizName); localStorage.setItem('pos_role',role);
+        console.log('Login successful, token received');
         checkAuth();
-    } catch(e) { toast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Login catch error:', e);
+        toast(e.message,'error'); 
+    }
 });
 
 document.getElementById('register-form').addEventListener('submit', async e => {

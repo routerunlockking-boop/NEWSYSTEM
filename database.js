@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Global variable to cache the mongoose connection
@@ -220,17 +221,7 @@ const initializeDatabase = async () => {
             });
             console.log('Admin user created.');
         } else {
-            await User.updateOne(
-                { _id: adminExists._id },
-                {
-                    email: 'smartzonelk101@gmail.com',
-                    password: 'admin',
-                    business_name: 'SMART ZONE',
-                    role: 'admin',
-                    is_active: true
-                }
-            );
-            console.log('Admin credentials updated for existing admin user.');
+            console.log('Admin user already exists.');
         }
 
         // Create default categories
