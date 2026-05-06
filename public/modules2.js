@@ -1,6 +1,6 @@
 // === POS ===
 let lastPosScanTime = 0;
-const POS_SCAN_THROTTLE_MS = 500;
+const POS_SCAN_THROTTLE_MS = 3000;
 
 // Shared scan handler — called from keyboard Enter AND camera scanner
 async function handlePosScan(val) {
@@ -33,28 +33,17 @@ async function handlePosScan(val) {
                 return; 
             }
 
-            // Special handling for SIM Cards category
-            if (item.product_category === 'SIM Cards') {
-                showSimActivationModal(item);
-                focusScanField();
-                return;
-            }
-
             addImeiToBill(item);
             focusScanField();
             return;
         }
     } catch(ex) {}
 
-    // 1. Try barcode match
-    const valTrim = val.trim();
-    if (!valTrim) return;
-    
-    const prod = products.find(p => p.barcode === valTrim);
+    // 3. Try barcode
+    const prod = products.find(p => p.barcode === val);
     if (prod && !prod.is_imei_tracked) {
         addToBill(prod);
         toast(`Added: ${prod.name}`);
-        showLastScanned(prod.name);
     }
     else if (prod && prod.is_imei_tracked) { 
         toast('IMEI product - scan individual IMEI number', 'error'); 
@@ -68,19 +57,16 @@ async function handlePosScan(val) {
 }
 
 function setupPOS() {
-    loadProducts();
     document.getElementById('pos-scan').addEventListener('keydown', async e => {
         if (e.key !== 'Enter') return;
-        const val = e.target.value;
+        e.preventDefault();
+        const val = e.target.value.trim();
         e.target.value = '';
         await handlePosScan(val);
     });
     document.getElementById('pos-search').addEventListener('input', e => {
         const q = e.target.value.toLowerCase();
-        if (posSearchTimeout) clearTimeout(posSearchTimeout);
-        posSearchTimeout = setTimeout(() => {
-            renderPOSGrid(q);
-        }, 150);
+        renderPOSGrid(q);
     });
     document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
     document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
@@ -170,7 +156,7 @@ async function loadCashiers() {
     } catch(e) { console.error('Failed to load cashiers:', e); }
 }
 
-async function loadProducts() {
+async function loadPOS() {
     try {
         const res = await api(`/products?lite=true&_t=${Date.now()}`);
         if (res) products = await res.json();
@@ -182,12 +168,11 @@ function renderPOSGrid(q) {
     const grid = document.getElementById('pos-products');
     const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q));
     grid.innerHTML = filtered.map(p => `
-        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `showImeiSelectionModal('${p.id}', '${p.name.replace(/'/g,"\\'")}')` : `addToBill('${p.id}')`}">
+        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `toast('Scan IMEI for this product','error')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false})`}">
             <h4>${p.name}</h4>
             <div class="price">Rs. ${p.price.toLocaleString()}</div>
-            <div class="stock">${p.quantity} in stock</div>
-            ${p.barcode ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">#${p.barcode}</div>` : ''}
-            ${p.is_imei_tracked ? `<span class="imei-badge"><i class='bx bx-chip'></i> Select IMEI</span>` : ''}
+            <div class="stock">Stock: ${p.quantity}</div>
+            ${p.is_imei_tracked ? '<div class="imei-badge">IMEI Tracked</div>' : ''}
         </div>`).join('');
 }
 
@@ -200,145 +185,24 @@ function addToBill(prod) {
 
 function addImeiToBill(item) {
     if (imeiInBill.find(i => i.imei_number === item.imei_number)) { toast('Already in bill', 'error'); return; }
-    
-    // Create a new bill item for this IMEI
-    const billItem = { 
-        name: item.product_name, 
-        price: item.selling_price, 
-        quantity: 1, 
-        is_imei_item: true, 
-        imei_number: item.imei_number, 
-        imei_id: item.id,
-        temp_id: 'imei-' + Date.now(), // For animation
-        sim_type: item.sim_type || ''
-    };
-    
-    currentBill.push(billItem);
+    currentBill.push({ name: item.product_name, price: item.selling_price, quantity: 1, is_imei_item: true, imei_number: item.imei_number, imei_id: item.id });
     imeiInBill.push(item);
     hasImeiInBill = true;
-    
     // Show customer box and highlight button
     document.getElementById('pos-customer-box').style.display = 'block';
     const custBtn = document.getElementById('btn-toggle-customer');
     custBtn.classList.add('btn-primary');
     custBtn.classList.remove('btn-outline');
-    
-    toast(`Added: ${item.imei_number}`, 'success');
-    showLastScanned(`${item.product_name} (${item.imei_number})`);
+    toast(`IMEI added: ${item.imei_number}`);
     renderBill();
-    
-    // Add a flash effect to the newly added item
-    setTimeout(() => {
-        const itemEl = document.querySelector(`[data-imei="${item.imei_number}"]`);
-        if (itemEl) {
-            itemEl.classList.add('scan-flash');
-            setTimeout(() => itemEl.classList.remove('scan-flash'), 800);
-        }
-    }, 100);
-}
-
-function showLastScanned(val) {
-    const el = document.getElementById('last-scanned');
-    const valEl = document.getElementById('last-scanned-val');
-    if (el && valEl) {
-        el.style.display = 'flex';
-        valEl.textContent = val;
-    }
-}
-
-let availableImeis = [];
-async function showImeiSelectionModal(prodId, prodName) {
-    const nameEl = document.getElementById('select-imei-prod-name');
-    if (nameEl) nameEl.textContent = prodName;
-    const listEl = document.getElementById('imei-selection-list');
-    if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center"><i class="bx bx-loader-alt bx-spin"></i> Loading...</div>';
-    const searchEl = document.getElementById('imei-selection-search');
-    if (searchEl) searchEl.value = '';
-    openModal('modal-select-imei');
-    
-    try {
-        const res = await api(`/imei?product_id=${prodId}&status=In Stock`);
-        if (!res) return;
-        availableImeis = await res.json();
-        renderImeiSelectionList();
-    } catch(e) {
-        toast('Failed to load IMEIs', 'error');
-    }
-}
-
-function renderImeiSelectionList(q = '') {
-    const el = document.getElementById('imei-selection-list');
-    if (!el) return;
-    const filtered = availableImeis.filter(i => !q || i.imei_number.toLowerCase().includes(q.toLowerCase()));
-    
-    if (filtered.length === 0) {
-        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No IMEIs available</div>';
-        return;
-    }
-    
-    el.innerHTML = filtered.map(i => `
-        <div class="imei-select-item" onclick="selectImeiFromModal('${i.imei_number}')" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:var(--transition)">
-            <strong>${i.imei_number}</strong>
-            <i class='bx bx-chevron-right' style="color:var(--text-muted)"></i>
-        </div>
-    `).join('');
-}
-
-async function selectImeiFromModal(imei) {
-    closeModal('modal-select-imei');
-    await handlePosScan(imei);
-}
-
-// Search listener for IMEI selection
-document.getElementById('imei-selection-search')?.addEventListener('input', e => {
-    renderImeiSelectionList(e.target.value);
-});
-
-// SIM Activation logic
-function showSimActivationModal(item) {
-    document.getElementById('sim-act-prod-id').value = item.product_id;
-    document.getElementById('sim-act-imei-num').value = item.imei_number;
-    document.getElementById('sim-act-serial').textContent = item.imei_number;
-    document.getElementById('sim-act-type').value = 'PREPAID';
-    document.getElementById('sim-act-router').value = '';
-    openModal('modal-sim-activation');
-}
-
-document.getElementById('btn-confirm-sim-act').onclick = function() {
-    const imeiNum = document.getElementById('sim-act-imei-num').value;
-    const simType = document.getElementById('sim-act-type').value;
-    const routerModel = document.getElementById('sim-act-router').value;
-    lookupAndAddSim(imeiNum, simType, routerModel);
-};
-
-async function lookupAndAddSim(imeiNum, simType, routerModel) {
-    try {
-        const res = await api(`/imei/lookup/${encodeURIComponent(imeiNum)}`);
-        if (res && res.ok) {
-            const item = await res.json();
-            item.sim_type = simType;
-            if (routerModel) item.product_name = routerModel; 
-            addImeiToBill(item);
-            closeModal('modal-sim-activation');
-        }
-    } catch(e) { toast('Error adding SIM', 'error'); }
 }
 
 function renderBill() {
     const el = document.getElementById('bill-items');
     el.innerHTML = currentBill.map((b, i) => `
-        <div class="bill-item" ${b.is_imei_item ? `data-imei="${b.imei_number}"` : ''}>
-            <div class="bill-item-info">
-                <h4 style="display:flex;align-items:center;gap:6px">
-                    ${b.is_imei_item ? '<i class="bx bx-chip" style="color:var(--info)"></i>' : ''}
-                    ${b.name}
-                </h4>
-                <p>
-                    <span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> 
-                    ${b.is_imei_item ? `<span class="imei-tag" style="margin-left:8px;font-size:11px;padding:2px 8px;background:var(--info-light);color:var(--info);border-radius:4px;font-family:monospace;font-weight:700"># ${b.imei_number}</span>` : `x ${b.quantity}`}
-                </p>
-                ${b.sim_type ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Type: ${b.sim_type}</div>` : ''}
-            </div>
+        <div class="bill-item">
+            <div class="bill-item-info"><h4>${b.name}</h4>
+                <p><span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}</p></div>
             <div class="bill-item-actions">
                 ${!b.is_imei_item ? `<div class="qty-ctrl">
                     <button class="qty-btn" onclick="changeBillQty(${i},-1)">-</button><span>${b.quantity}</span>
@@ -380,6 +244,7 @@ function updateBillTotals() {
 
 async function submitBill() {
     if (!currentBill.length) return toast('Add items first', 'error');
+    // Validate cashier selection
     const cashierSel = document.getElementById('pos-cashier-select').value;
     const cashierCustom = document.getElementById('pos-cashier-custom').value.trim();
     const cashierName = cashierSel === '__custom__' ? cashierCustom : cashierSel;
@@ -393,18 +258,8 @@ async function submitBill() {
     }
     const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const data = {
-        items: currentBill.map(b => ({ 
-            name: b.name, price: b.price, quantity: b.quantity, 
-            is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '' 
-        })),
-        imei_items: imeiInBill.map(i => {
-            const billItem = currentBill.find(b => b.imei_id === i.id);
-            return { 
-                imei_id: i.id, selling_price: i.selling_price, 
-                sim_type: billItem ? billItem.sim_type : '',
-                product_name_override: billItem ? billItem.name : ''
-            };
-        }),
+        items: currentBill.map(b => ({ name: b.name, price: b.price, quantity: b.quantity, is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '' })),
+        imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
         total_amount: total,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
         payment_method: document.getElementById('pos-payment').value,
@@ -435,19 +290,33 @@ async function submitBill() {
         document.getElementById('pos-cust-email').value = '';
         document.getElementById('pos-cust-address').value = '';
         renderBill(); loadPOS();
-        loadCustomers();
-        loadInventory();
+        loadCustomers(); // Reload customers to show any newly added one
+        loadInventory(); // Update stock in the inventory UI
     } catch(e) { toast(e.message, 'error'); }
 }
 
 async function printReceipt(inv) {
     const pa = document.getElementById('print-area');
+    
+    // Fetch custom invoice settings
     let invSettings = {
-        header_title: 'SMARTZONE', header_subtitle: 'New Town Padaviya, Anuradhapura', header_contact: 'Mobile: 078-68000 86',
-        tax_invoice_text: 'Tax Invoice', label_bill_no: 'Bill No:', label_cashier: 'Cashier:', label_customer: 'Customer:',
-        label_tel: 'Tel:', label_item: 'Item', label_qty: 'Qty', label_amount: 'Amount', label_subtotal: 'Subtotal',
-        label_total: 'TOTAL', label_amount_paid: 'Amount Paid', label_balance: 'Balance',
-        footer_message1: 'Thank You! Come Again', footer_message2: 'Please keep this receipt for warranty claims.',
+        header_title: 'SMARTZONE',
+        header_subtitle: 'New Town Padaviya, Anuradhapura',
+        header_contact: 'Mobile: 078-68000 86',
+        tax_invoice_text: 'Tax Invoice',
+        label_bill_no: 'Bill No:',
+        label_cashier: 'Cashier:',
+        label_customer: 'Customer:',
+        label_tel: 'Tel:',
+        label_item: 'Item',
+        label_qty: 'Qty',
+        label_amount: 'Amount',
+        label_subtotal: 'Subtotal',
+        label_total: 'TOTAL',
+        label_amount_paid: 'Amount Paid',
+        label_balance: 'Balance',
+        footer_message1: 'Thank You! Come Again',
+        footer_message2: 'Please keep this receipt for warranty claims.<br>Items with IMEI are subject to warranty conditions.',
         footer_powered_by: 'Powered by SmartZone'
     };
     let activeTemplate = null;
@@ -456,16 +325,19 @@ async function printReceipt(inv) {
         if (res && res.ok) {
             const p = await res.json();
             if (p.invoice_settings) invSettings = { ...invSettings, ...p.invoice_settings };
-            if (p.invoice_templates) activeTemplate = p.invoice_templates.find(t => t.is_active);
+            if (p.invoice_templates) {
+                activeTemplate = p.invoice_templates.find(t => t.is_active);
+            }
         }
-    } catch(e) {}
+    } catch(e) { console.warn('Could not load profile settings', e); }
 
     const paid = inv.amount_paid || 0;
     const balance = paid > 0 ? (paid - inv.total_amount) : 0;
+
     let itemsHtml = inv.items.map(i => `
         <div style="margin-bottom:6px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <span style="width:55%;word-break:break-word;">${i.product_name}</span>
+                <span style="width:55%;word-break:break-word;padding-right:4px">${i.product_name}</span>
                 <span style="width:15%;text-align:center">${i.quantity}</span>
                 <span style="width:30%;text-align:right">${i.subtotal.toFixed(2)}</span>
             </div>
@@ -473,42 +345,162 @@ async function printReceipt(inv) {
         </div>
     `).join('');
 
-    let finalHtml = `
-        <div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">
-            <div style="text-align:center;margin-bottom:12px;">
-                <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">${invSettings.header_title}</h1>
-                <p style="margin:2px 0;font-size:11px;">${invSettings.header_subtitle}</p>
-                <p style="margin:0;font-size:11px;">${invSettings.header_contact}</p>
-                <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
-                <h2 style="margin:0;font-size:14px;font-weight:700;">${invSettings.tax_invoice_text}</h2>
+    let finalHtml = '';
+    
+    if (activeTemplate) {
+        const order = activeTemplate.order || ['header', 'invoice_info', 'people_info', 'items', 'totals', 'footer'];
+        const vis = activeTemplate.visibility || {};
+        const labels = activeTemplate.labels || {};
+        
+        order.forEach(blockId => {
+            if (vis[blockId] === false) return;
+            
+            if (blockId === 'header') {
+                finalHtml += `
+                    <div style="text-align:center;margin-bottom:12px;">
+                        <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;">${labels.header_title || ''}</h1>
+                        <p style="margin:2px 0;font-size:11px;font-weight:500;">${labels.header_subtitle || ''}</p>
+                        <p style="margin:0;font-size:11px;font-weight:500;">${labels.header_contact || ''}</p>
+                        <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                        <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${labels.tax_text || ''}</h2>
+                    </div>
+                `;
+            } else if (blockId === 'invoice_info') {
+                finalHtml += `
+                    <div style="font-size:11px;font-weight:500;display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${labels.label_bill || ''} ${inv.invoice_number}</span>
+                        <span>${labels.label_date || ''} ${inv.date}</span>
+                    </div>
+                `;
+            } else if (blockId === 'people_info') {
+                finalHtml += `<div style="font-size:11px;font-weight:500;margin-bottom:8px;">`;
+                if (inv.cashier_name && inv.cashier_name !== 'System') {
+                    finalHtml += `<div style="margin-bottom:4px;">${labels.label_cashier || ''} <strong>${inv.cashier_name}</strong></div>`;
+                }
+                if (inv.customer_name && inv.customer_name !== 'Walk-in') {
+                    finalHtml += `<div style="margin-top:6px;"><div style="font-weight:700;">${labels.label_customer || ''} ${inv.customer_name}</div>`;
+                    if (inv.customer_phone) finalHtml += `<div>${labels.label_tel || ''} ${inv.customer_phone}</div>`;
+                    finalHtml += `</div>`;
+                }
+                finalHtml += `</div>`;
+            } else if (blockId === 'items') {
+                finalHtml += `
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                        <span style="width:55%;text-align:left">${labels.label_item || ''}</span>
+                        <span style="width:15%;text-align:center">${labels.label_qty || ''}</span>
+                        <span style="width:30%;text-align:right">${labels.label_amount || ''}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                    <div style="font-size:11px;margin-bottom:10px;">${itemsHtml}</div>
+                    <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                `;
+            } else if (blockId === 'totals') {
+                finalHtml += `
+                    <div style="font-size:12px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                        <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;"><span>${labels.label_paid || ''}</span><span>${paid.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>${labels.label_balance || ''}</span><span>${balance.toFixed(2)}</span></div>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+                `;
+            } else if (blockId === 'footer') {
+                finalHtml += `
+                    <div style="text-align:center;font-size:10px;margin-top:12px;">
+                        <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${labels.footer_msg1 || ''}</p>
+                        <p style="margin:0 0 8px 0;line-height:1.3;">${labels.footer_msg2 || ''}</p>
+                    </div>
+                `;
+            }
+        });
+            
+        finalHtml += `<div style="text-align:center;font-size:10px;margin-top:12px;border-top:1.5px dashed #000;padding-top:10px"><p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p></div>`;
+        pa.innerHTML = `<div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">${finalHtml}</div>`;
+    } else {
+        pa.innerHTML = `
+            <div style="width:100%;max-width:80mm;">
+                <div style="text-align:center;margin-bottom:12px;">
+                    <h1 style="margin:0;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">${invSettings.header_title}</h1>
+                    <p style="margin:2px 0;font-size:11px;font-weight:500;">${invSettings.header_subtitle}</p>
+                    <p style="margin:0;font-size:11px;font-weight:500;">${invSettings.header_contact}</p>
+                    <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+                    <h2 style="margin:0;font-size:14px;font-weight:700;text-transform:uppercase;">${invSettings.tax_invoice_text}</h2>
+                </div>
+                
+                <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${invSettings.label_bill_no} ${inv.invoice_number}</span>
+                        <span>${inv.date}</span>
+                    </div>
+                    ${inv.cashier_name && inv.cashier_name !== 'System' ? `
+                    <div style="margin-bottom:4px;">${invSettings.label_cashier} <strong>${inv.cashier_name}</strong></div>` : ''}
+                    ${inv.customer_name && inv.customer_name !== 'Walk-in' ? `
+                    <div style="margin-top:6px;">
+                        <div style="font-weight:700;">${invSettings.label_customer} ${inv.customer_name}</div>
+                        ${inv.customer_phone ? `<div>${invSettings.label_tel} ${inv.customer_phone}</div>` : ''}
+                    </div>` : ''}
+                </div>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                    <span style="width:55%;text-align:left">${invSettings.label_item}</span>
+                    <span style="width:15%;text-align:center">${invSettings.label_qty}</span>
+                    <span style="width:30%;text-align:right">${invSettings.label_amount}</span>
+                </div>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="font-size:11px;margin-bottom:10px;">
+                    ${itemsHtml}
+                </div>
+                
+                <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+                
+                <div style="font-size:12px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${invSettings.label_subtotal}</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
+                        <span>${invSettings.label_total}</span>
+                        <span>${inv.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px;">
+                        <span>${invSettings.label_amount_paid}</span>
+                        <span>${paid.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
+                        <span>${invSettings.label_balance}</span>
+                        <span>${balance.toFixed(2)}</span>
+                    </div>
+                </div>
+                
+                <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+                
+                <div style="text-align:center;font-size:10px;margin-top:12px;">
+                    <p style="font-weight:700;font-size:14px;margin:0 0 4px 0;">${invSettings.footer_message1}</p>
+                    <p style="margin:0 0 8px 0;line-height:1.3;">${invSettings.footer_message2}</p>
+                    <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p>
+                </div>
             </div>
-            <div style="font-size:11px;margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;"><span>${invSettings.label_bill_no} ${inv.invoice_number}</span><span>${inv.date}</span></div>
-                <div>${invSettings.label_cashier} ${inv.cashier_name}</div>
-                ${inv.customer_name!=='Walk-in'?`<div>${invSettings.label_customer} ${inv.customer_name}</div>`:''}
-            </div>
-            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
-            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
-                <span style="width:55%">${invSettings.label_item}</span><span style="width:15%;text-align:center">${invSettings.label_qty}</span><span style="width:30%;text-align:right">${invSettings.label_amount}</span>
-            </div>
-            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
-            <div style="font-size:11px;">${itemsHtml}</div>
-            <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
-            <div style="font-size:12px;">
-                <div style="display:flex;justify-content:space-between;"><span>${invSettings.label_total}</span><strong>${inv.total_amount.toFixed(2)}</strong></div>
-                <div style="display:flex;justify-content:space-between;"><span>${invSettings.label_amount_paid}</span><span>${paid.toFixed(2)}</span></div>
-                <div style="display:flex;justify-content:space-between;font-weight:700;"><span>${invSettings.label_balance}</span><span>${balance.toFixed(2)}</span></div>
-            </div>
-            <div style="text-align:center;font-size:10px;margin-top:20px;">
-                <p style="font-weight:700;">${invSettings.footer_message1}</p>
-                <p>${invSettings.footer_message2}</p>
-                <p style="margin-top:10px;font-family:monospace;color:#555;">${invSettings.footer_powered_by}</p>
-            </div>
-        </div>
-    `;
-    pa.innerHTML = finalHtml;
+        `;
+    }
+
     pa.style.display = 'block';
-    setTimeout(() => { window.print(); pa.style.display = 'none'; document.getElementById('pos-scan')?.focus(); }, 300);
+    
+    // window.print blocks the thread. Once the print dialog closes, we hide the area and refocus scanner.
+    setTimeout(() => { 
+        window.print(); 
+        pa.style.display = 'none'; 
+        const scanInput = document.getElementById('pos-scan');
+        if (scanInput) scanInput.focus();
+    }, 300);
 }
 
 // === WARRANTY ===
@@ -518,85 +510,277 @@ function setupWarranty() {
         if (!imei) return toast('Enter IMEI number', 'error');
         try {
             const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
-            if (!res || !res.ok) { toast('IMEI not found', 'error'); return; }
+            if (!res || !res.ok) { toast('IMEI not found', 'error'); document.getElementById('warranty-result').style.display='none'; return; }
             const item = await res.json();
             const isValid = item.warranty_expiry_date && new Date(item.warranty_expiry_date) > new Date();
             const el = document.getElementById('warranty-result');
             el.style.display = 'block';
-            el.innerHTML = `<div class="table-card" style="padding:28px">
-                <h3>${item.product_name}</h3>${isValid?'<span class="badge badge-green">ACTIVE</span>':'<span class="badge badge-red">EXPIRED</span>'}
-                <p>IMEI: ${item.imei_number}</p>
-                <p>Customer: ${item.customer_name||'-'}</p>
-                <p>Expiry: ${item.warranty_expiry_date?formatDate(item.warranty_expiry_date):'-'}</p>
-                ${item.status==='Sold'?`<button class="btn btn-warning" onclick="openStatusModal('${item.id}')">Process Warranty</button>`:''}
+            el.innerHTML = `<div class="table-card" style="padding:28px;max-width:800px;margin:0 auto">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                    <h3>${item.product_name}</h3>${isValid?'<span class="badge badge-green" style="font-size:14px;padding:6px 14px">WARRANTY ACTIVE</span>':'<span class="badge badge-red" style="font-size:14px;padding:6px 14px">WARRANTY EXPIRED</span>'}
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+                    <div><label style="font-size:12px;color:var(--text-muted)">IMEI</label><p style="font-weight:700;font-family:monospace">${item.imei_number}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Status</label><p>${statusBadge(item.status)}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Customer</label><p>${item.customer_name||'-'}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Phone</label><p>${item.customer_phone||'-'}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">NIC</label><p>${item.customer_nic||'-'}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Purchase Date</label><p>${item.sold_date?formatDate(item.sold_date):'-'}</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Warranty Period</label><p>${item.warranty_months} months</p></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Expiry</label><p>${item.warranty_expiry_date?formatDate(item.warranty_expiry_date):'-'}</p></div>
+                </div>
+                ${item.status==='Sold'?`<button class="btn btn-warning" onclick="openStatusModal('${item.id}')"><i class='bx bx-refresh'></i> Process Return / Warranty Claim</button>`:''}
+                <h4 style="margin:20px 0 12px"><i class='bx bx-history'></i> History</h4>
+                <div class="timeline">${(item.status_history||[]).map(h=>`<div class="timeline-item"><div class="timeline-date">${new Date(h.date).toLocaleString()}</div><div class="timeline-status">${h.status}</div><div class="timeline-note">${h.notes||''}</div></div>`).join('')}</div>
             </div>`;
         } catch(e) { toast(e.message, 'error'); }
     };
+    document.getElementById('warranty-scan').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-warranty-lookup').click(); });
 }
 
 // === CUSTOMERS ===
 function setupCustomerModal() {
-    document.getElementById('btn-add-customer').onclick = () => { document.getElementById('customer-form').reset(); document.getElementById('cust-id').value = ''; openModal('modal-customer'); };
-    document.getElementById('btn-save-customer').onclick = async () => {
-        const data = { name: document.getElementById('cust-name').value, phone: document.getElementById('cust-phone').value, nic_number: document.getElementById('cust-nic').value, address: document.getElementById('cust-addr').value };
-        await api('/customers', { method:'POST', body:JSON.stringify(data) }); toast('Customer added'); closeModal('modal-customer'); loadCustomers();
+    document.getElementById('btn-add-customer').onclick = () => {
+        document.getElementById('customer-form').reset();
+        document.getElementById('cust-id').value = '';
+        document.getElementById('cust-modal-title').textContent = 'Add Customer';
+        openModal('modal-customer');
     };
+    document.getElementById('btn-save-customer').onclick = async () => {
+        const id = document.getElementById('cust-id').value;
+        const data = { name: document.getElementById('cust-name').value, phone: document.getElementById('cust-phone').value,
+            nic_number: document.getElementById('cust-nic').value, email: document.getElementById('cust-email').value,
+            address: document.getElementById('cust-addr').value };
+        if (!data.name || !data.phone) return toast('Name and phone required', 'error');
+        try {
+            const res = await api(id?`/customers/${id}`:'/customers', { method:id?'PUT':'POST', body:JSON.stringify(data) });
+            if (!res) return; const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast(id?'Customer updated':'Customer added');
+            closeModal('modal-customer'); loadCustomers();
+        } catch(e) { toast(e.message,'error'); }
+    };
+    document.getElementById('cust-search').addEventListener('input', debounce(loadCustomers, 400));
 }
+
 async function loadCustomers() {
-    const res = await api('/customers'); if (res) { customers = await res.json(); const sel = document.getElementById('pos-cust-select'); if (sel) sel.innerHTML = '<option value="">+ New Customer</option>' + customers.map(c => `<option value="${c.id}">${c.name} - ${c.phone}</option>`).join(''); }
+    try {
+        const search = document.getElementById('cust-search')?.value || '';
+        const res = await api(`/customers?search=${encodeURIComponent(search)}`);
+        if (!res) return;
+        customers = await res.json();
+        
+        const tb = document.querySelector('#cust-table tbody');
+        if (tb) {
+            tb.innerHTML = customers.map(c => `<tr>
+                <td><strong>${c.name}</strong></td><td>${c.phone}</td><td>${c.nic_number||'-'}</td>
+                <td>${c.email||'-'}</td><td>${c.address||'-'}</td>
+                <td><button class="btn btn-sm btn-outline" onclick="editCustomer('${c.id}')"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')"><i class='bx bx-trash'></i></button></td>
+            </tr>`).join('');
+        }
+        
+        const sel = document.getElementById('pos-cust-select');
+        if (sel) {
+            sel.innerHTML = '<option value="">+ New Customer (Type below)</option>' + 
+                customers.map(c => `<option value="${c.id}">${c.name} - ${c.phone}</option>`).join('');
+        }
+    } catch(e) { console.error(e); }
+}
+
+function editCustomer(id) {
+    const c = customers.find(x=>x.id===id); if(!c) return;
+    document.getElementById('cust-id').value = c.id;
+    document.getElementById('cust-name').value = c.name;
+    document.getElementById('cust-phone').value = c.phone;
+    document.getElementById('cust-nic').value = c.nic_number||'';
+    document.getElementById('cust-email').value = c.email||'';
+    document.getElementById('cust-addr').value = c.address||'';
+    document.getElementById('cust-modal-title').textContent = 'Edit Customer';
+    openModal('modal-customer');
+}
+
+async function deleteCustomer(id) {
+    if(!confirm('Delete customer?')) return;
+    try { const res = await api(`/customers/${id}`,{method:'DELETE'}); if(res&&res.ok){toast('Deleted');loadCustomers();} } catch(e){toast(e.message,'error');}
 }
 
 // === INVOICES ===
 function setupInvoiceFilters() {
-    document.getElementById('inv-filter-date').onchange = loadInvoices;
-    document.getElementById('inv-filter-month').onchange = loadInvoices;
+    document.getElementById('inv-filter-date').addEventListener('change', loadInvoices);
+    document.getElementById('inv-filter-month').addEventListener('change', loadInvoices);
+    document.getElementById('btn-clear-inv-filter').onclick = () => {
+        document.getElementById('inv-filter-date').value = '';
+        document.getElementById('inv-filter-month').value = '';
+        loadInvoices();
+    };
 }
+
 async function loadInvoices() {
-    let url = '/invoices?';
-    const d = document.getElementById('inv-filter-date').value; if (d) url += `date=${d}`;
-    const res = await api(url); if (res) { const invs = await res.json(); document.querySelector('#invoices-table tbody').innerHTML = invs.map(i => `<tr><td>${i.invoice_number}</td><td>${i.date}</td><td>${i.customer_name}</td><td>Rs. ${i.total_amount.toLocaleString()}</td><td><button class="btn btn-sm btn-outline" onclick="viewInvoice('${i.id}')">View</button></td></tr>`).join(''); }
+    try {
+        let url = '/invoices?';
+        const d = document.getElementById('inv-filter-date').value;
+        const m = document.getElementById('inv-filter-month').value;
+        if (d) url += `date=${d}`; else if (m) url += `month=${m}`;
+        const res = await api(url);
+        if (!res) return;
+        const invs = await res.json();
+        const tb = document.querySelector('#invoices-table tbody');
+        tb.innerHTML = invs.map(i => `<tr>
+            <td><strong>${i.invoice_number}</strong></td><td>${i.date} ${i.time||''}</td>
+            <td>${i.customer_name||'-'}</td><td>${i.cashier_name||'-'}</td><td>Rs. ${i.total_amount.toLocaleString()}</td>
+            <td style="color:var(--success)">Rs. ${(i.total_profit||0).toLocaleString()}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="viewInvoice('${i.id}')"><i class='bx bx-show'></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${i.id}')"><i class='bx bx-trash'></i></button></td>
+        </tr>`).join('');
+    } catch(e) { console.error(e); }
 }
+
+let currentInvoiceData = null; // Store for reprinting
+
 async function viewInvoice(id) {
-    const res = await api(`/invoices/${id}`); if (res) { const inv = await res.json(); document.getElementById('invoice-detail-body').innerHTML = `Bill: ${inv.invoice_number}<br>Total: ${inv.total_amount}`; openModal('modal-invoice'); }
+    try {
+        const res = await api(`/invoices/${id}`); if(!res) return;
+        const inv = await res.json();
+        currentInvoiceData = inv; // Store for reprint
+        document.getElementById('invoice-detail-body').innerHTML = `
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                <div><strong>Bill No:</strong> ${inv.invoice_number}<br><strong>Date:</strong> ${new Date(inv.date).toLocaleString()}</div>
+                <div style="text-align:right"><strong>Cashier:</strong> ${inv.cashier_name}<br><strong>Customer:</strong> ${inv.customer_name}</div>
+            </div>
+            <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>
+                ${inv.items.map(i => `<tr><td>${i.product_name}${i.imei_number?`<br><small>IMEI: ${i.imei_number}</small>`:''}</td><td>${i.quantity}</td><td>${i.price.toFixed(2)}</td><td>${i.subtotal.toFixed(2)}</td></tr>`).join('')}
+            </tbody></table>
+            <div style="text-align:right;margin-top:10px;font-size:16px"><strong>Total: Rs. ${inv.total_amount.toFixed(2)}</strong></div>
+            <div style="text-align:right;color:var(--text-muted)">Paid: Rs. ${(inv.amount_paid||0).toFixed(2)} | Method: ${inv.payment_method||'Cash'}</div>
+        `;
+        document.getElementById('btn-reprint-invoice').onclick = () => printReceipt(inv);
+        openModal('modal-invoice');
+    } catch(e) { console.error(e); }
+}
+
+async function deleteInvoice(id) {
+    if(!confirm('Delete invoice? Stock will be restocked.')) return;
+    try { const res = await api(`/invoices/${id}`,{method:'DELETE'}); if(res&&res.ok){toast('Invoice deleted');loadInvoices();} } catch(e){toast(e.message,'error');}
 }
 
 // === SLT REPORTS ===
 function setupSLT() {
-    const now = new Date(); document.getElementById('slt-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const now = new Date();
+    document.getElementById('slt-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     document.getElementById('btn-slt-generate').onclick = loadSLTReport;
     document.getElementById('btn-slt-export').onclick = exportSLT;
-    document.getElementById('slt-select-all')?.addEventListener('change', function() { document.querySelectorAll('.slt-row-cb').forEach(cb => cb.checked = this.checked); });
 }
+
 async function loadSLTReport() {
     const month = document.getElementById('slt-month').value;
-    const res = await api(`/reports/slt?month=${month}`); if (res) {
+    if (!month) return toast('Select month','error');
+    try {
+        const res = await api(`/reports/slt?month=${month}`);
+        if (!res) return;
         const items = await res.json();
-        document.querySelector('#slt-table tbody').innerHTML = items.map((i,idx) => `<tr>
-            <td><input type="checkbox" class="slt-row-cb" data-id="${i.id}"></td>
-            <td>${idx+1}</td><td>${i.purchase_date?formatDate(i.purchase_date):'-'}</td>
+        const tb = document.querySelector('#slt-table tbody');
+        tb.innerHTML = items.map((i,idx) => `<tr>
+            <td>${idx+1}</td><td><code>${i.imei_number}</code></td><td>${i.product_name}</td>
             <td>${i.customer_name||'-'}</td><td>${i.customer_phone||'-'}</td><td>${i.customer_nic||'-'}</td>
-            <td>${i.sim_type||'-'}</td><td>${i.product_name}</td><td><code>${i.imei_number || i.sim_serial || '-'}</code></td><td>${i.slt_number || '-'}</td>
-        </tr>`).join('') || '<tr><td colspan="10" style="text-align:center">No records</td></tr>';
-    }
+            <td>${i.purchase_date?formatDate(i.purchase_date):'-'}</td><td>${i.warranty_months}m</td>
+        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">No records for this month</td></tr>';
+    } catch(e) { console.error(e); }
 }
-async function exportSLT() {
+
+function exportSLT() {
     const month = document.getElementById('slt-month').value;
-    const ids = Array.from(document.querySelectorAll('.slt-row-cb:checked')).map(cb => cb.dataset.id);
-    let url = `${API}/reports/slt/export?month=${month}`; if (ids.length) url += `&ids=${ids.join(',')}`;
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    const blob = await res.blob();
-    const a = document.createElement('a'); a.href = window.URL.createObjectURL(blob); a.download = `SLT_Report_${month}.xlsx`; a.click();
+    if (!month) return toast('Select month','error');
+    window.open(`${API}/reports/slt/export?month=${month}`, '_blank');
 }
 
 // === REPORTS ===
-function setupReportTabs() { document.querySelectorAll('[data-report]').forEach(btn => btn.onclick = () => loadReports(btn.dataset.report)); }
+function setupReportTabs() {
+    document.querySelectorAll('[data-report]').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('[data-report]').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
+            btn.classList.add('btn-primary'); btn.classList.remove('btn-outline');
+            loadReports(btn.dataset.report);
+        };
+    });
+}
+
 async function loadReports(type='sales') {
-    const url = type === 'sales' ? '/reports/sales' : '/reports/product-sales';
-    const res = await api(url); if (res) { const data = await res.json(); const tb = document.getElementById('reports-table').querySelector('tbody'); if (type==='sales') tb.innerHTML = data.map(r => `<tr><td>${r.date}</td><td>Rs. ${r.total_sales.toLocaleString()}</td><td>Rs. ${r.total_profit.toLocaleString()}</td></tr>`).join(''); }
+    try {
+        const url = type === 'sales' ? '/reports/sales' : '/reports/product-sales';
+        const res = await api(url); if (!res) return;
+        const data = await res.json();
+        const table = document.getElementById('reports-table');
+        if (type === 'sales') {
+            table.querySelector('thead').innerHTML = '<tr><th>Date</th><th>Sales</th><th>Profit</th></tr>';
+            table.querySelector('tbody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>Rs. ${r.total_sales.toLocaleString()}</td><td style="color:var(--success)">Rs. ${r.total_profit.toLocaleString()}</td></tr>`).join('');
+        } else {
+            table.querySelector('thead').innerHTML = '<tr><th>Product</th><th>Qty Sold</th><th>Revenue</th><th>Profit</th></tr>';
+            table.querySelector('tbody').innerHTML = data.map(r => `<tr><td>${r.product_name}</td><td>${r.quantity_sold}</td><td>Rs. ${r.revenue.toLocaleString()}</td><td style="color:var(--success)">Rs. ${(r.profit||0).toLocaleString()}</td></tr>`).join('');
+        }
+    } catch(e) { console.error(e); }
 }
 
 // === ADMIN ===
+let adminUsers = [];
+
 async function loadAdmin() {
-    const res = await api('/admin/users'); if (res) { const users = await res.json(); document.querySelector('#admin-table tbody').innerHTML = users.map(u => `<tr><td>${u.business_name}</td><td>${u.email}</td><td>${u.role}</td><td><button class="btn btn-sm btn-outline" onclick="editAdminUser('${u.id}')">Edit</button></td></tr>`).join(''); }
+    try {
+        const res = await api('/admin/users'); if (!res) return;
+        adminUsers = await res.json();
+        document.querySelector('#admin-table tbody').innerHTML = adminUsers.map(u => `<tr>
+            <td><strong>${u.business_name}</strong></td><td>${u.email}</td>
+            <td>${u.whatsapp_number||'-'}</td>
+            <td>${u.role}</td>
+            <td>${u.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-red">Pending</span>'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="editAdminUser('${u.id}')"><i class='bx bx-edit'></i></button>
+                <button class="btn btn-sm ${u.is_active?'btn-warning':'btn-success'}" onclick="toggleUser('${u.id}',${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')"><i class='bx bx-trash'></i></button></td>
+        </tr>`).join('');
+    } catch(e) { console.error(e); }
 }
-async function saveAdminEdit() { toast('Account updated'); closeModal('modal-admin-edit'); loadAdmin(); }
+
+function editAdminUser(id) {
+    const u = adminUsers.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('admin-edit-id').value = u.id;
+    document.getElementById('admin-edit-business').value = u.business_name;
+    document.getElementById('admin-edit-email').value = u.email;
+    document.getElementById('admin-edit-phone').value = u.whatsapp_number || '';
+    document.getElementById('admin-edit-role').value = u.role;
+    document.getElementById('admin-edit-password').value = '';
+    document.getElementById('admin-edit-active').checked = u.is_active;
+    openModal('modal-admin-edit');
+}
+
+async function saveAdminEdit() {
+    const id = document.getElementById('admin-edit-id').value;
+    const data = {
+        business_name: document.getElementById('admin-edit-business').value,
+        email: document.getElementById('admin-edit-email').value,
+        whatsapp_number: document.getElementById('admin-edit-phone').value,
+        role: document.getElementById('admin-edit-role').value,
+        is_active: document.getElementById('admin-edit-active').checked
+    };
+    const pw = document.getElementById('admin-edit-password').value;
+    if (pw.trim()) data.password = pw;
+    if (!data.business_name || !data.email) return toast('Business name and email required', 'error');
+    try {
+        const res = await api(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        if (!res) return;
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast('Account updated');
+        closeModal('modal-admin-edit');
+        loadAdmin();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleUser(id, activate) {
+    try { await api(`/admin/users/${id}`,{method:'PUT',body:JSON.stringify({is_active:activate})}); toast('Updated'); loadAdmin(); } catch(e){toast(e.message,'error');}
+}
+
+async function deleteUser(id) {
+    if(!confirm('Delete user and all data?')) return;
+    try { const res = await api(`/admin/users/${id}`,{method:'DELETE'}); if(res&&res.ok){toast('Deleted');loadAdmin();} } catch(e){toast(e.message,'error');}
+}

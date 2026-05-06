@@ -1,4 +1,3 @@
-require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Global variable to cache the mongoose connection
@@ -85,9 +84,6 @@ const ProductSchema = new mongoose.Schema({
     supplier: { type: String, default: '' }
 });
 
-ProductSchema.index({ barcode: 1 });
-ProductSchema.index({ name: 'text' });
-
 // Status history entry for IMEI items
 const StatusHistorySchema = new mongoose.Schema({
     status: { type: String, required: true },
@@ -99,10 +95,7 @@ const StatusHistorySchema = new mongoose.Schema({
 const ImeiItemSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    imei_number: { type: String, default: '' },
-    sim_serial_number: { type: String, default: '' },
-    slt_number: { type: String, default: '' },
-    sim_type: { type: String, enum: ['', 'POSTPAID', 'PREPAID'], default: '' },
+    imei_number: { type: String, required: true, unique: true },
     purchase_price: { type: Number, default: 0 },
     selling_price: { type: Number, default: 0 },
     warranty_months: { type: Number, default: 12 },
@@ -221,7 +214,17 @@ const initializeDatabase = async () => {
             });
             console.log('Admin user created.');
         } else {
-            console.log('Admin user already exists.');
+            await User.updateOne(
+                { _id: adminExists._id },
+                {
+                    email: 'smartzonelk101@gmail.com',
+                    password: 'admin',
+                    business_name: 'SMART ZONE',
+                    role: 'admin',
+                    is_active: true
+                }
+            );
+            console.log('Admin credentials updated for existing admin user.');
         }
 
         // Create default categories

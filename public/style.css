@@ -27,12 +27,6 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.imei-select-item:hover {
-    background-color: var(--secondary) !important;
-    padding-left: 20px !important;
-    color: var(--primary);
-}
-
 body.dark-mode {
     --secondary: #1e293b;
     --bg-body: #0c1222;
@@ -287,23 +281,6 @@ select.form-control { cursor:pointer; }
 }
 .scan-mode-bar.active { display:flex; }
 .scan-mode-bar i { font-size:18px; }
-
-/* Last Scanned Bar */
-.last-scanned-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--primary-light);
-    color: var(--primary);
-    padding: 10px 16px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid var(--primary);
-    animation: fadeIn 0.3s ease;
-}
-.last-scanned-bar i { font-size: 18px; }
 
 /* Scanned queue in IMEI modal */
 .scanned-queue { max-height:200px; overflow-y:auto; margin-top:10px; }

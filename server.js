@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -9,9 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // Connect to MongoDB
 if (process.env.NODE_ENV !== 'production') {
-    connectDB()
-        .then(() => { initializeDatabase(); })
-        .catch(err => { console.error('FAILED TO CONNECT TO MONGODB:', err.message); });
+    connectDB().then(() => { initializeDatabase(); });
 }
 
 // Middleware
@@ -23,17 +20,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     next();
-});
-
-// Health check
-app.get('/api/status', async (req, res) => {
-    try {
-        const state = mongoose.connection.readyState;
-        const status = ['disconnected', 'connected', 'connecting', 'disconnecting'][state];
-        res.json({ status, database: status === 'connected' ? 'OK' : 'Error' });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
 });
 
 // Auth routes (public)
@@ -92,7 +78,7 @@ app.post('/api/marketplace/enable', async (req, res) => {
 });
 
 // Serve SPA
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

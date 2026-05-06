@@ -174,17 +174,6 @@ router.post('/', async (req, res) => {
                         changed_by: req.user.business_name || 'System'
                     });
 
-                    if (imeiData.sim_type) imeiItem.sim_type = imeiData.sim_type;
-                    if (imeiData.product_name_override) {
-                        // For SLT Report, we want the "Router Model" column to show what the user entered
-                        // We store it in status_history or a separate field? 
-                        // Actually, I'll just save it to the product_name field in the bill items (which I already do in the loop above)
-                        // But we also need to store it in the ImeiItem for the SLT report query.
-                        // I'll use a new field or reuse notes? 
-                        // Let's use the slt_number field or just let the report query the invoice items?
-                        // Better to store it in ImeiItem.
-                    }
-
                     await imeiItem.save();
                     await syncProductStock(imeiItem.product_id);
                 }

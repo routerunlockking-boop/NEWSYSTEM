@@ -57,24 +57,15 @@ function sanitizeBarcode(raw) {
 document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
-        console.log('Attempting login for:', document.getElementById('login-email').value);
         const res = await fetch(API+'/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ email:document.getElementById('login-email').value, password:document.getElementById('login-password').value })
         });
-        console.log('Login response status:', res.status);
         const d = await res.json();
-        if (!res.ok) {
-            console.error('Login failed:', d.error);
-            throw new Error(`Login failed (${res.status}): ${d.error}`);
-        }
+        if (!res.ok) throw new Error(d.error);
         token=d.token; bizName=d.business_name; role=d.role;
         localStorage.setItem('pos_token',token); localStorage.setItem('pos_business',bizName); localStorage.setItem('pos_role',role);
-        console.log('Login successful, token received');
         checkAuth();
-    } catch(e) { 
-        console.error('Login catch error:', e);
-        toast(e.message,'error'); 
-    }
+    } catch(e) { toast(e.message,'error'); }
 });
 
 document.getElementById('register-form').addEventListener('submit', async e => {
@@ -236,114 +227,15 @@ function checkAuth() {
     if (token) {
         document.getElementById('auth-overlay').classList.remove('active');
         document.getElementById('biz-name').textContent = bizName;
-        if (role === 'admin') {
-            document.getElementById('nav-admin-item').style.display='flex'; 
-            document.getElementById('nav-admin-divider').style.display='block';
-            if (currentView === 'dashboard-view') loadDashboard();
-        } else { 
+        if (role === 'admin') { 
+            document.getElementById('nav-admin-item').style.display='block'; 
+            document.getElementById('nav-admin-divider').style.display='block'; 
+        } else {
             document.getElementById('nav-admin-item').style.display='none'; 
             document.getElementById('nav-admin-divider').style.display='none'; 
-            if (currentView === 'dashboard-view') {
-                // Cashiers shouldn't see dashboard, switch to POS
-                switchView('pos-view');
-            }
         }
-    } else { 
-        document.getElementById('auth-overlay').classList.add('active'); 
-        checkSystemStatus();
-    }
-}
-
-async function checkSystemStatus() {
-    const el = document.getElementById('db-status');
-    if (!el) return;
-    try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        if (data.database === 'OK') {
-            el.innerHTML = '<span style="color:#10b981"><i class="bx bxs-circle"></i> System Online</span>';
-        } else {
-            el.innerHTML = '<span style="color:#ef4444"><i class="bx bxs-circle"></i> System Offline (DB Error)</span>';
-        }
-    } catch (e) {
-        el.innerHTML = '<span style="color:#ef4444"><i class="bx bxs-circle"></i> System Offline (Server Error)</span>';
-    }
-}
-
-async function loadDashboard() {
-    try {
-        const res = await api('/dashboard');
-        if (!res) return;
-        const data = await res.json();
-        
-        const grid = document.getElementById('dash-grid');
-        if (grid) {
-            grid.innerHTML = `
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--primary-light);color:var(--primary)"><i class='bx bx-receipt'></i></div>
-                    <div class="dash-card-info">
-                        <h3>${data.totalBillsToday}</h3>
-                        <p>Bills Today</p>
-                    </div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--info-light);color:var(--info)"><i class='bx bx-money'></i></div>
-                    <div class="dash-card-info">
-                        <h3>Rs. ${data.dailyIncome.toLocaleString()}</h3>
-                        <p>Income Today</p>
-                    </div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--success-light);color:var(--success)"><i class='bx bx-trending-up'></i></div>
-                    <div class="dash-card-info">
-                        <h3>Rs. ${data.dailyProfit.toLocaleString()}</h3>
-                        <p>Profit Today</p>
-                    </div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--warning-light);color:var(--warning)"><i class='bx bx-package'></i></div>
-                    <div class="dash-card-info">
-                        <h3>${data.lowStockProducts}</h3>
-                        <p>Low Stock Items</p>
-                    </div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--info-light);color:var(--info)"><i class='bx bx-chip'></i></div>
-                    <div class="dash-card-info">
-                        <h3>${data.imeiInStock}</h3>
-                        <p>IMEIs In Stock</p>
-                    </div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-card-icon" style="background:var(--success-light);color:var(--success)"><i class='bx bx-cart-alt'></i></div>
-                    <div class="dash-card-info">
-                        <h3>${data.imeiSold}</h3>
-                        <p>IMEIs Sold</p>
-                    </div>
-                </div>
-            `;
-        }
-        
-        loadLowStock();
-    } catch(e) { console.error('Dashboard error:', e); }
-}
-
-async function loadLowStock() {
-    try {
-        const res = await api('/dashboard/low-stock');
-        if (!res) return;
-        const products = await res.json();
-        const tb = document.querySelector('#low-stock-table tbody');
-        if (tb) {
-            tb.innerHTML = products.map(p => `
-                <tr>
-                    <td><strong>${p.name}</strong></td>
-                    <td><span class="badge badge-red">${p.quantity}</span></td>
-                    <td>${p.is_imei_tracked ? '<span class="badge badge-info">IMEI</span>' : '<span class="badge badge-outline">General</span>'}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">No low stock alerts</td></tr>';
-        }
-    } catch(e) { console.error(e); }
+        loadDashboard();
+    } else { document.getElementById('auth-overlay').classList.add('active'); }
 }
 
 // === THEME ===
@@ -362,38 +254,31 @@ function updateClock() { document.getElementById('clock').textContent = new Date
 
 // === NAVIGATION ===
 let currentView = 'dashboard-view';
-function switchView(target) {
-    const link = document.querySelector(`.nav-link[data-target="${target}"]`);
-    if (!link) return;
-    
-    document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
-    link.classList.add('active');
-    
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    const targetEl = document.getElementById(target);
-    if (targetEl) targetEl.classList.add('active');
-    
-    document.getElementById('page-title').textContent = link.dataset.title || 'POS';
-    currentView = target;
-    
-    if(target==='dashboard-view' && role === 'admin') loadDashboard();
-    if(target==='inventory-view') loadInventory();
-    if(target==='pos-view') { loadPOS(); focusScanField(); }
-    if(target==='imei-view') loadImeiList();
-    if(target==='invoice-view') loadInvoices();
-    if(target==='customer-view') loadCustomers();
-    if(target==='report-view') loadReports();
-    if(target==='admin-view') loadAdmin();
-}
-
 function setupNav() {
     document.querySelectorAll('.nav-link').forEach(link => {
         link.onclick = e => {
             e.preventDefault();
-            switchView(link.dataset.target);
+            document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+            link.classList.add('active');
+            const target = link.dataset.target;
+            document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+            document.getElementById(target).classList.add('active');
+            document.getElementById('page-title').textContent = link.dataset.title;
+            currentView = target;
+            if(target==='dashboard-view') loadDashboard();
+            if(target==='inventory-view') loadInventory();
+            if(target==='pos-view') { loadPOS(); focusScanField(); }
+            if(target==='imei-view') loadImeiList();
+            if(target==='customers-view') loadCustomers();
+            if(target==='suppliers-view') loadSuppliers();
+            if(target==='invoices-view') loadInvoices();
+            if(target==='design-view') loadInvoiceDesigner();
+            if(target==='reports-view') loadReports('sales');
+            if(target==='admin-view') loadAdmin();
+            if(target==='barcode-view') loadBarcodePrinter();
+            if(target==='slt-view') { /* ready for generate */ }
         };
     });
-}
 }
 
 // === SCAN MODE ===
