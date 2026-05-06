@@ -46,7 +46,7 @@ async function handlePosScan(val) {
         toast(`Added: ${prod.name}`);
     }
     else if (prod && prod.is_imei_tracked) { 
-        toast('IMEI product - scan individual IMEI number', 'error'); 
+        showImeiSelector(prod.id, prod.name);
         lastPosScanTime = 0; 
     }
     else { 
@@ -54,6 +54,75 @@ async function handlePosScan(val) {
         lastPosScanTime = 0; 
     }
     focusScanField();
+}
+
+let imeiSelectorList = [];
+async function showImeiSelector(productId, productName) {
+    document.getElementById('imei-selector-title').innerHTML = `<i class='bx bx-chip' style="color:var(--primary)"></i> ${productName}`;
+    const listEl = document.getElementById('imei-selector-list');
+    listEl.innerHTML = '<div style="text-align:center;padding:20px"><i class="bx bx-loader bx-spin" style="font-size:24px"></i><br>Loading items...</div>';
+    
+    const searchInput = document.getElementById('imei-selector-search');
+    searchInput.value = '';
+    
+    openModal('modal-pos-imei-selector');
+    setTimeout(() => searchInput.focus(), 300);
+
+    try {
+        const res = await api(`/imei?product_id=${productId}&status=In Stock`);
+        if (!res) return;
+        imeiSelectorList = await res.json();
+        renderImeiSelectorList('');
+        
+        // Setup search
+        searchInput.oninput = (e) => renderImeiSelectorList(e.target.value.toLowerCase());
+        searchInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const val = searchInput.value.trim();
+                const found = imeiSelectorList.find(i => i.imei_number === val || i.sim_serial_number === val || i.slt_number === val);
+                if (found) {
+                    addImeiToBill(found);
+                    closeModal('modal-pos-imei-selector');
+                } else {
+                    toast('Not found in stock for this product', 'error');
+                }
+            }
+        };
+    } catch(e) { console.error(e); listEl.innerHTML = 'Error loading items'; }
+}
+
+function renderImeiSelectorList(q) {
+    const listEl = document.getElementById('imei-selector-list');
+    const filtered = imeiSelectorList.filter(i => 
+        !q || 
+        i.imei_number.toLowerCase().includes(q) || 
+        (i.sim_serial_number && i.sim_serial_number.toLowerCase().includes(q)) ||
+        (i.slt_number && i.slt_number.toLowerCase().includes(q))
+    );
+
+    if (!filtered.length) {
+        listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">No matching items in stock</div>';
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(i => `
+        <div class="imei-select-item" onclick="selectImeiFromList('${i.id}')" style="padding:12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition: all 0.2s;">
+            <div style="font-family:monospace; font-weight:700; color:var(--primary)">${i.imei_number}</div>
+            ${i.product_category === 'SIM Cards' ? `
+                <div style="font-size:12px; display:flex; gap:10px; margin-top:4px">
+                    <span><i class='bx bx-hash'></i> SLT: ${i.slt_number || '-'}</span>
+                    <span><i class='bx bx-barcode'></i> SIM: ${i.sim_serial_number || '-'}</span>
+                </div>` : ''}
+        </div>
+    `).join('');
+}
+
+function selectImeiFromList(id) {
+    const item = imeiSelectorList.find(i => i.id === id);
+    if (item) {
+        addImeiToBill(item);
+        closeModal('modal-pos-imei-selector');
+    }
 }
 
 function setupPOS() {
@@ -168,7 +237,7 @@ function renderPOSGrid(q) {
     const grid = document.getElementById('pos-products');
     const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q));
     grid.innerHTML = filtered.map(p => `
-        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `toast('Scan IMEI for this product','error')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false})`}">
+        <div class="pos-item-card" onclick="${p.is_imei_tracked ? `showImeiSelector('${p.id}', '${p.name.replace(/'/g,"\\'")}')` : `addToBill({id:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',price:${p.price},quantity:${p.quantity},is_imei_tracked:false})`}">
             <h4>${p.name}</h4>
             <div class="price">Rs. ${p.price.toLocaleString()}</div>
             <div class="stock">Stock: ${p.quantity}</div>

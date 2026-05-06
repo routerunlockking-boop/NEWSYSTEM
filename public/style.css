@@ -490,3 +490,5 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
         50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
     }
 }
+
+.imei-select-item:hover { background: rgba(59, 130, 246, 0.1); border-color: var(--primary) !important; transform: translateX(5px); } .imei-select-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s ease; }

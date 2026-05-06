@@ -571,6 +571,23 @@
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-admin-edit')">Cancel</button><button class="btn btn-primary" id="btn-save-admin-edit"><i class='bx bx-check'></i> Save Changes</button></div>
 </div></div>
 
+<!-- POS IMEI Selector Modal -->
+<div class="modal-bg" id="modal-pos-imei-selector"><div class="modal" style="max-width: 500px">
+    <div class="modal-head"><h3 id="imei-selector-title"><i class='bx bx-chip' style="color:var(--primary)"></i> Select IMEI / SIM</h3><button class="close-btn" onclick="closeModal('modal-pos-imei-selector')">&times;</button></div>
+    <div class="modal-body">
+        <div class="form-group">
+            <label>Type or Scan IMEI/SIM</label>
+            <div class="scanner-input"><i class='bx bx-barcode'></i><input type="text" id="imei-selector-search" class="form-control" placeholder="Search available items..." autocomplete="off"></div>
+        </div>
+        <div id="imei-selector-list" class="imei-selector-list" style="max-height: 350px; overflow-y: auto; margin-top: 15px; display: grid; gap: 8px;">
+            <!-- List of available IMEIs -->
+        </div>
+    </div>
+    <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal('modal-pos-imei-selector')">Close</button>
+    </div>
+</div></div>
+
 <!-- Print Area -->
 <div id="print-area" style="display:none"></div>
 
