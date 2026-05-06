@@ -185,7 +185,19 @@ function addToBill(prod) {
 
 function addImeiToBill(item) {
     if (imeiInBill.find(i => i.imei_number === item.imei_number)) { toast('Already in bill', 'error'); return; }
-    currentBill.push({ name: item.product_name, price: item.selling_price, quantity: 1, is_imei_item: true, imei_number: item.imei_number, imei_id: item.id });
+    currentBill.push({ 
+        name: item.product_name, 
+        price: item.selling_price, 
+        quantity: 1, 
+        is_imei_item: true, 
+        imei_number: item.imei_number, 
+        imei_id: item.id,
+        category: item.product_category,
+        sim_type: item.sim_type || 'SLT',
+        sim_payment_type: item.sim_payment_type || 'POSTPAID',
+        router_model: item.router_model || item.product_name,
+        slt_number: item.slt_number || ''
+    });
     imeiInBill.push(item);
     hasImeiInBill = true;
     // Show customer box and highlight button
@@ -193,16 +205,47 @@ function addImeiToBill(item) {
     const custBtn = document.getElementById('btn-toggle-customer');
     custBtn.classList.add('btn-primary');
     custBtn.classList.remove('btn-outline');
-    toast(`IMEI added: ${item.imei_number}`);
+    toast(`Added: ${item.imei_number}`);
     renderBill();
 }
 
 function renderBill() {
     const el = document.getElementById('bill-items');
-    el.innerHTML = currentBill.map((b, i) => `
-        <div class="bill-item">
-            <div class="bill-item-info"><h4>${b.name}</h4>
-                <p><span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}</p></div>
+    el.innerHTML = currentBill.map((b, i) => {
+        const isSim = b.category === 'SIM Cards';
+        return `
+        <div class="bill-item" style="${isSim ? 'border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.05);' : ''}">
+            <div class="bill-item-info">
+                <h4>${b.name}</h4>
+                <p>
+                    <span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> 
+                    ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}
+                </p>
+                ${isSim ? `
+                <div class="sim-bill-fields" style="margin-top:10px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:10px">SIM Type</label>
+                        <select class="form-control form-control-sm" onchange="updateBillSimField(${i}, 'sim_type', this.value)">
+                            <option value="SLT" ${b.sim_type==='SLT'?'selected':''}>SLT</option>
+                            <option value="Mobitel" ${b.sim_type==='Mobitel'?'selected':''}>Mobitel</option>
+                            <option value="Dialog" ${b.sim_type==='Dialog'?'selected':''}>Dialog</option>
+                            <option value="Hutch" ${b.sim_type==='Hutch'?'selected':''}>Hutch</option>
+                            <option value="Airtel" ${b.sim_type==='Airtel'?'selected':''}>Airtel</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:10px">Payment</label>
+                        <select class="form-control form-control-sm" onchange="updateBillSimField(${i}, 'sim_payment_type', this.value)">
+                            <option value="POSTPAID" ${b.sim_payment_type==='POSTPAID'?'selected':''}>POSTPAID</option>
+                            <option value="PREPAID" ${b.sim_payment_type==='PREPAID'?'selected':''}>PREPAID</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; grid-column: span 2">
+                        <label style="font-size:10px">Router Model</label>
+                        <input type="text" class="form-control form-control-sm" value="${b.router_model}" placeholder="Router Model" oninput="updateBillSimField(${i}, 'router_model', this.value)">
+                    </div>
+                </div>` : ''}
+            </div>
             <div class="bill-item-actions">
                 ${!b.is_imei_item ? `<div class="qty-ctrl">
                     <button class="qty-btn" onclick="changeBillQty(${i},-1)">-</button><span>${b.quantity}</span>
@@ -210,8 +253,13 @@ function renderBill() {
                 <span class="item-total">Rs. ${(b.price * b.quantity).toLocaleString()}</span>
                 <button class="btn-ghost" onclick="removeBillItem(${i})"><i class='bx bx-x' style="font-size:18px;color:var(--danger)"></i></button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
     updateBillTotals();
+}
+
+function updateBillSimField(i, field, val) {
+    currentBill[i][field] = val;
 }
 
 function editBillPrice(i) {
@@ -258,7 +306,15 @@ async function submitBill() {
     }
     const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const data = {
-        items: currentBill.map(b => ({ name: b.name, price: b.price, quantity: b.quantity, is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '' })),
+        items: currentBill.map(b => ({ 
+            name: b.name, price: b.price, quantity: b.quantity, 
+            is_imei_item: b.is_imei_item, imei_number: b.imei_number || '', imei_id: b.imei_id || '',
+            sim_serial_number: b.category === 'SIM Cards' ? b.imei_number : '',
+            slt_number: b.slt_number || '',
+            sim_type: b.sim_type || '',
+            sim_payment_type: b.sim_payment_type || '',
+            router_model: b.router_model || ''
+        })),
         imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
         total_amount: total,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
@@ -681,10 +737,17 @@ async function loadSLTReport() {
         const items = await res.json();
         const tb = document.querySelector('#slt-table tbody');
         tb.innerHTML = items.map((i,idx) => `<tr>
-            <td>${idx+1}</td><td><code>${i.imei_number}</code></td><td>${i.product_name}</td>
-            <td>${i.customer_name||'-'}</td><td>${i.customer_phone||'-'}</td><td>${i.customer_nic||'-'}</td>
-            <td>${i.purchase_date?formatDate(i.purchase_date):'-'}</td><td>${i.warranty_months}m</td>
-        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">No records for this month</td></tr>';
+            <td>${idx+1}</td>
+            <td>${i.purchase_date ? formatDate(i.purchase_date) : '-'}</td>
+            <td><strong>${i.customer_name||'-'}</strong></td>
+            <td>${i.customer_phone||'-'}</td>
+            <td>${i.customer_nic||'-'}</td>
+            <td>${i.sim_type || '-'}</td>
+            <td><code>${i.sim_serial_number || '-'}</code></td>
+            <td>${i.slt_number || '-'}</td>
+            <td>${i.router_model || '-'}</td>
+            <td><code>${i.imei_number}</code></td>
+        </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">No records for this month</td></tr>';
     } catch(e) { console.error(e); }
 }
 

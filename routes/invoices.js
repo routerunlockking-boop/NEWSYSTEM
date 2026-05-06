@@ -99,7 +99,13 @@ router.post('/', async (req, res) => {
                 price, subtotal: quantity * price, profit: item_profit,
                 is_imei_item: item.is_imei_item || false,
                 imei_number: item.imei_number || '',
-                imei_id: item.imei_id || null
+                imei_id: item.imei_id || null,
+                // SIM Specific Fields
+                sim_serial_number: item.sim_serial_number || '',
+                slt_number: item.slt_number || '',
+                sim_type: item.sim_type || '',
+                sim_payment_type: item.sim_payment_type || '',
+                router_model: item.router_model || ''
             });
         }
 
@@ -167,6 +173,14 @@ router.post('/', async (req, res) => {
                     imeiItem.warranty_start_date = now;
                     imeiItem.warranty_expiry_date = warrantyExpiry;
                     if (imeiData.selling_price) imeiItem.selling_price = imeiData.selling_price;
+                    
+                    // SIM Specific Fields from the bill item
+                    const billItem = items.find(bi => bi.imei_id === imeiData.imei_id);
+                    if (billItem) {
+                        if (billItem.sim_type) imeiItem.sim_type = billItem.sim_type;
+                        if (billItem.sim_payment_type) imeiItem.sim_payment_type = billItem.sim_payment_type;
+                        if (billItem.router_model) imeiItem.router_model = billItem.router_model;
+                    }
 
                     imeiItem.status_history.push({
                         status: 'Sold', date: now,

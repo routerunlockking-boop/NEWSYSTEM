@@ -24,6 +24,8 @@ router.get('/', async (req, res) => {
         if (search) {
             qf.$or = [
                 { imei_number: new RegExp(search, 'i') },
+                { sim_serial_number: new RegExp(search, 'i') },
+                { slt_number: new RegExp(search, 'i') },
                 { customer_name: new RegExp(search, 'i') },
                 { customer_phone: new RegExp(search, 'i') },
                 { customer_nic: new RegExp(search, 'i') }
@@ -40,6 +42,11 @@ router.get('/', async (req, res) => {
         res.json(items.map(i => ({
             id: i._id.toString(),
             imei_number: i.imei_number,
+            sim_serial_number: i.sim_serial_number,
+            slt_number: i.slt_number,
+            sim_type: i.sim_type,
+            sim_payment_type: i.sim_payment_type,
+            router_model: i.router_model,
             product_name: i.product_id ? i.product_id.name : 'Unknown',
             product_category: i.product_id ? i.product_id.category : '',
             product_id: i.product_id ? i.product_id._id.toString() : '',
@@ -67,12 +74,23 @@ router.get('/', async (req, res) => {
 // Lookup single IMEI - for scanning
 router.get('/lookup/:imei', async (req, res) => {
     try {
-        const item = await ImeiItem.findOne({ imei_number: req.params.imei })
+        const item = await ImeiItem.findOne({ 
+            $or: [
+                { imei_number: req.params.imei },
+                { sim_serial_number: req.params.imei },
+                { slt_number: req.params.imei }
+            ]
+        })
             .populate('product_id', 'name category price cost_price warranty_months');
         if (!item) return res.status(404).json({ error: 'IMEI not found' });
         res.json({
             id: item._id.toString(),
             imei_number: item.imei_number,
+            sim_serial_number: item.sim_serial_number,
+            slt_number: item.slt_number,
+            sim_type: item.sim_type,
+            sim_payment_type: item.sim_payment_type,
+            router_model: item.router_model,
             product_name: item.product_id ? item.product_id.name : 'Unknown',
             product_id: item.product_id ? item.product_id._id.toString() : '',
             product_category: item.product_id ? item.product_id.category : '',
@@ -99,9 +117,9 @@ router.get('/lookup/:imei', async (req, res) => {
 
 // Add IMEI items (bulk) - when receiving stock
 router.post('/', async (req, res) => {
-    const { product_id, imei_numbers, purchase_price, selling_price, warranty_months } = req.body;
-    if (!product_id || !imei_numbers || !imei_numbers.length) {
-        return res.status(400).json({ error: 'Product ID and IMEI numbers are required' });
+    const { product_id, items, purchase_price, selling_price, warranty_months } = req.body;
+    if (!product_id || !items || !items.length) {
+        return res.status(400).json({ error: 'Product ID and items are required' });
     }
     try {
         const product = await Product.findById(product_id);
@@ -109,19 +127,22 @@ router.post('/', async (req, res) => {
 
         const results = [];
         const errors = [];
-        for (const imei of imei_numbers) {
-            const trimmed = imei.trim();
-            if (!trimmed) continue;
+        for (const i of items) {
+            const imeiNum = i.imei_number.trim();
+            if (!imeiNum) continue;
+            
             // Check duplicate
-            const existing = await ImeiItem.findOne({ imei_number: trimmed });
+            const existing = await ImeiItem.findOne({ imei_number: imeiNum });
             if (existing) {
-                errors.push(`IMEI ${trimmed} already exists`);
+                errors.push(`IMEI ${imeiNum} already exists`);
                 continue;
             }
             const item = await ImeiItem.create({
                 user_id: req.user._id,
                 product_id: product._id,
-                imei_number: trimmed,
+                imei_number: imeiNum,
+                sim_serial_number: i.sim_serial_number || '',
+                slt_number: i.slt_number || '',
                 purchase_price: purchase_price || product.cost_price || 0,
                 selling_price: selling_price || product.price || 0,
                 warranty_months: warranty_months || product.warranty_months || 12,
@@ -141,7 +162,7 @@ router.post('/', async (req, res) => {
         await syncProductStock(product_id);
 
         res.status(201).json({
-            message: `${results.length} IMEI items added successfully`,
+            message: `${results.length} items added successfully`,
             added: results.length,
             errors
         });

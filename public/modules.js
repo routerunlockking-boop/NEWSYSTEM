@@ -166,7 +166,8 @@ async function loadImeiList() {
         const items = await res.json();
         const tb = document.querySelector('#imei-table tbody');
         tb.innerHTML = items.map(i => `<tr>
-            <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code></td>
+            <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code>
+                ${i.product_category === 'SIM Cards' ? `<br><small class="text-primary">SLT: ${i.slt_number || '-'}</small>` : ''}</td>
             <td>${i.product_name}</td>
             <td>${statusBadge(i.status)}</td>
             <td>${i.customer_name||'-'}<br><small style="color:var(--text-muted)">${i.customer_phone||''}</small></td>
@@ -200,37 +201,42 @@ async function handleImeiStockScan(rawValue) {
         const bulkText = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
 
         // Check duplicate in current queue
-        if (scannedImeiQueue.includes(imei) || bulkText.includes(imei)) {
+        if (scannedImeiQueue.some(q => q.val === imei) || bulkText.includes(imei)) {
             toast(`Duplicate in queue: ${imei}`, 'error');
             addToScannedQueueUI(imei, true, 'Already in queue');
             return;
         }
 
-        // Add to queue immediately to block other rapid scans of the same barcode
-        scannedImeiQueue.push(imei);
+        const sltNumber = document.getElementById('imei-slt-number').value.trim();
+        const category = document.getElementById('imei-product').selectedOptions[0]?.dataset.category || '';
+        
+        // Add to queue immediately
+        scannedImeiQueue.push({ val: imei, slt: sltNumber });
 
         // Quick duplicate check against DB
         try {
             const res = await api(`/imei/lookup/${encodeURIComponent(imei)}`);
             if (res && res.ok) {
                 // Oops, it's in the DB. Remove from queue.
-                scannedImeiQueue = scannedImeiQueue.filter(i => i !== imei);
-                toast(`IMEI already exists in database: ${imei}`, 'error');
+                scannedImeiQueue = scannedImeiQueue.filter(i => i.val !== imei);
+                toast(`IMEI/SIM Serial already exists: ${imei}`, 'error');
                 addToScannedQueueUI(imei, true, 'Exists in DB');
                 return;
             }
         } catch(ex) {}
 
         // Success UI update
-        addToScannedQueueUI(imei, false);
+        addToScannedQueueUI(imei, false, sltNumber ? `SLT: ${sltNumber}` : '');
         updateScanCount();
-        toast(`IMEI scanned: ${imei}`, 'scan');
+        toast(`${category === 'SIM Cards' ? 'SIM' : 'IMEI'} scanned: ${imei}`, 'scan');
 
-        // Auto-focus back for next scan
+        // Clear SLT number field for next SIM if needed, or keep it? 
+        // User might be scanning many SIMs with different SLT numbers.
+        document.getElementById('imei-slt-number').value = '';
         document.getElementById('imei-scan-input')?.focus();
     } finally {
         // Unlock
-        setTimeout(() => { isProcessingImei[imei] = false; }, 1000); // Lock for 1 second to prevent bounce
+        setTimeout(() => { isProcessingImei[imei] = false; }, 1000);
     }
 }
 
@@ -256,13 +262,17 @@ function setupImeiModal() {
         const prods = await res.json();
         const tracked = prods.filter(p => p.is_imei_tracked);
         const sel = document.getElementById('imei-product');
-        sel.innerHTML = tracked.map(p => `<option value="${p.id}" data-cost="${p.cost_price}" data-price="${p.price}" data-warranty="${p.warranty_months}">${p.name}</option>`).join('');
+        sel.innerHTML = tracked.map(p => `<option value="${p.id}" data-category="${p.category}" data-cost="${p.cost_price}" data-price="${p.price}" data-warranty="${p.warranty_months}">${p.name}</option>`).join('');
         if (!tracked.length) { toast('No IMEI-tracked products. Add a product first.','error'); return; }
         sel.onchange = () => {
             const opt = sel.selectedOptions[0];
             document.getElementById('imei-purchase-price').value = opt.dataset.cost;
             document.getElementById('imei-selling-price').value = opt.dataset.price;
             document.getElementById('imei-warranty').value = opt.dataset.warranty || 12;
+            
+            // Show SIM fields if category is SIM Cards
+            const isSim = opt.dataset.category === 'SIM Cards';
+            document.getElementById('sim-stock-fields').style.display = isSim ? 'block' : 'none';
         };
         sel.dispatchEvent(new Event('change'));
         // Reset
@@ -279,16 +289,32 @@ function setupImeiModal() {
         const btn = this;
         // Merge scanned queue + bulk textarea
         const bulkText = document.getElementById('imei-numbers').value.split('\n').map(s=>s.trim()).filter(Boolean);
-        const allImeis = [...new Set([...scannedImeiQueue, ...bulkText])];
-        if (!allImeis.length) return toast('Scan or enter at least one IMEI','error');
+        const bulkItems = bulkText.map(i => ({ val: i, slt: '' }));
+        const allItems = [...scannedImeiQueue, ...bulkItems];
+        
+        // Remove duplicates based on val
+        const seen = new Set();
+        const uniqueItems = allItems.filter(el => {
+            const duplicate = seen.has(el.val);
+            seen.add(el.val);
+            return !duplicate;
+        });
+
+        if (!uniqueItems.length) return toast('Scan or enter at least one IMEI/SIM Serial','error');
 
         btn.disabled = true;
         const origHtml = btn.innerHTML;
         btn.innerHTML = '<i class="bx bx-loader bx-spin"></i> Saving...';
 
+        const category = document.getElementById('imei-product').selectedOptions[0]?.dataset.category || '';
+
         const data = {
             product_id: document.getElementById('imei-product').value,
-            imei_numbers: allImeis,
+            items: uniqueItems.map(i => ({
+                imei_number: i.val,
+                sim_serial_number: category === 'SIM Cards' ? i.val : '',
+                slt_number: i.slt || ''
+            })),
             purchase_price: parseFloat(document.getElementById('imei-purchase-price').value)||0,
             selling_price: parseFloat(document.getElementById('imei-selling-price').value)||0,
             warranty_months: parseInt(document.getElementById('imei-warranty').value)||12
@@ -298,7 +324,7 @@ function setupImeiModal() {
             if (!res) throw new Error('Network error');
             const d = await res.json();
             if (!res.ok) throw new Error(d.error || 'Failed to save');
-            toast(`${d.added} IMEI items added successfully`);
+            toast(`${d.added} items added successfully`);
             if (d.errors && d.errors.length) toast(d.errors.join(', '),'error');
             closeModal('modal-imei'); loadImeiList(); loadInventory();
         } catch(e) { 
@@ -350,6 +376,13 @@ async function viewImeiDetail(id) {
                 <div><label style="font-size:12px;color:var(--text-muted)">Selling Price</label><p>Rs. ${(item.selling_price||0).toLocaleString()}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">Received</label><p>${formatDate(item.received_date)}</p></div>
                 <div><label style="font-size:12px;color:var(--text-muted)">Sold Date</label><p>${item.sold_date?formatDate(item.sold_date):'-'}</p></div>
+                ${item.product_category === 'SIM Cards' ? `
+                <div><label style="font-size:12px;color:var(--text-muted)">SIM Serial</label><p style="font-family:monospace">${item.sim_serial_number || '-'}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">SLT Number</label><p>${item.slt_number || '-'}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">SIM Type</label><p>${item.sim_type || '-'}</p></div>
+                <div><label style="font-size:12px;color:var(--text-muted)">Payment</label><p>${item.sim_payment_type || '-'}</p></div>
+                <div style="grid-column:span 2"><label style="font-size:12px;color:var(--text-muted)">Router Model</label><p>${item.router_model || '-'}</p></div>
+                ` : ''}
             </div>
             ${item.customer_name ? `<div style="background:var(--secondary);border-radius:10px;padding:16px;margin-bottom:20px">
                 <h4 style="font-size:13px;color:var(--text-muted);margin-bottom:10px"><i class='bx bx-user'></i> Customer</h4>

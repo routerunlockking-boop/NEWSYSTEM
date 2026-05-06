@@ -116,6 +116,12 @@ const ImeiItemSchema = new mongoose.Schema({
     sold_date: { type: Date },
     received_date: { type: Date, default: Date.now },
     notes: { type: String, default: '' },
+    // SIM Specific Fields
+    sim_serial_number: { type: String, default: '' },
+    slt_number: { type: String, default: '' },
+    sim_type: { type: String, default: '' },
+    sim_payment_type: { type: String, enum: ['', 'POSTPAID', 'PREPAID'], default: '' },
+    router_model: { type: String, default: '' },
     status_history: [StatusHistorySchema]
 });
 
@@ -133,7 +139,13 @@ const InvoiceItemSchema = new mongoose.Schema({
     profit: { type: Number, default: 0.0 },
     is_imei_item: { type: Boolean, default: false },
     imei_number: { type: String, default: '' },
-    imei_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ImeiItem' }
+    imei_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ImeiItem' },
+    // SIM Specific Fields
+    sim_serial_number: { type: String, default: '' },
+    slt_number: { type: String, default: '' },
+    sim_type: { type: String, default: '' },
+    sim_payment_type: { type: String, default: '' },
+    router_model: { type: String, default: '' }
 });
 
 const InvoiceSchema = new mongoose.Schema({
