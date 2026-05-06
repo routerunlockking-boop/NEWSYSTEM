@@ -238,6 +238,82 @@ function checkAuth() {
     } else { document.getElementById('auth-overlay').classList.add('active'); }
 }
 
+async function loadDashboard() {
+    try {
+        const res = await api('/dashboard');
+        if (!res) return;
+        const data = await res.json();
+        
+        const grid = document.getElementById('dash-grid');
+        if (grid) {
+            grid.innerHTML = `
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--primary-light);color:var(--primary)"><i class='bx bx-receipt'></i></div>
+                    <div class="dash-card-info">
+                        <h3>${data.totalBillsToday}</h3>
+                        <p>Bills Today</p>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--info-light);color:var(--info)"><i class='bx bx-money'></i></div>
+                    <div class="dash-card-info">
+                        <h3>Rs. ${data.dailyIncome.toLocaleString()}</h3>
+                        <p>Income Today</p>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--success-light);color:var(--success)"><i class='bx bx-trending-up'></i></div>
+                    <div class="dash-card-info">
+                        <h3>Rs. ${data.dailyProfit.toLocaleString()}</h3>
+                        <p>Profit Today</p>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--warning-light);color:var(--warning)"><i class='bx bx-package'></i></div>
+                    <div class="dash-card-info">
+                        <h3>${data.lowStockProducts}</h3>
+                        <p>Low Stock Items</p>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--info-light);color:var(--info)"><i class='bx bx-chip'></i></div>
+                    <div class="dash-card-info">
+                        <h3>${data.imeiInStock}</h3>
+                        <p>IMEIs In Stock</p>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-icon" style="background:var(--success-light);color:var(--success)"><i class='bx bx-cart-alt'></i></div>
+                    <div class="dash-card-info">
+                        <h3>${data.imeiSold}</h3>
+                        <p>IMEIs Sold</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        loadLowStock();
+    } catch(e) { console.error('Dashboard error:', e); }
+}
+
+async function loadLowStock() {
+    try {
+        const res = await api('/dashboard/low-stock');
+        if (!res) return;
+        const products = await res.json();
+        const tb = document.querySelector('#low-stock-table tbody');
+        if (tb) {
+            tb.innerHTML = products.map(p => `
+                <tr>
+                    <td><strong>${p.name}</strong></td>
+                    <td><span class="badge badge-red">${p.quantity}</span></td>
+                    <td>${p.is_imei_tracked ? '<span class="badge badge-info">IMEI</span>' : '<span class="badge badge-outline">General</span>'}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">No low stock alerts</td></tr>';
+        }
+    } catch(e) { console.error(e); }
+}
+
 // === THEME ===
 function initTheme() {
     const saved = localStorage.getItem('pos_theme') || 'light';

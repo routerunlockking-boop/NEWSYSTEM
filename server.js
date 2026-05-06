@@ -78,7 +78,7 @@ app.post('/api/marketplace/enable', async (req, res) => {
 });
 
 // Serve SPA
-app.get('/{*path}', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
