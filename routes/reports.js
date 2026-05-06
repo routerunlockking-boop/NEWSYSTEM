@@ -85,11 +85,14 @@ router.get('/slt', async (req, res) => {
 // SLT Report Export to Excel
 router.get('/slt/export', async (req, res) => {
     try {
-        const { month, from, to } = req.query;
+        const { month, from, to, ids } = req.query;
         const qf = req.user.role === 'admin' ? {} : { user_id: req.user._id };
         qf.status = 'Sold';
 
-        if (month) {
+        if (ids) {
+            const idList = ids.split(',').filter(id => id.length > 0);
+            qf._id = { $in: idList };
+        } else if (month) {
             const startDate = new Date(month + '-01');
             const endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 1);

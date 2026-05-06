@@ -44,6 +44,7 @@ async function handlePosScan(val) {
     if (prod && !prod.is_imei_tracked) {
         addToBill(prod);
         toast(`Added: ${prod.name}`);
+        showLastScanned(prod.name);
     }
     else if (prod && prod.is_imei_tracked) { 
         toast('IMEI product - scan individual IMEI number', 'error'); 
@@ -185,24 +186,67 @@ function addToBill(prod) {
 
 function addImeiToBill(item) {
     if (imeiInBill.find(i => i.imei_number === item.imei_number)) { toast('Already in bill', 'error'); return; }
-    currentBill.push({ name: item.product_name, price: item.selling_price, quantity: 1, is_imei_item: true, imei_number: item.imei_number, imei_id: item.id });
+    
+    // Create a new bill item for this IMEI
+    const billItem = { 
+        name: item.product_name, 
+        price: item.selling_price, 
+        quantity: 1, 
+        is_imei_item: true, 
+        imei_number: item.imei_number, 
+        imei_id: item.id,
+        temp_id: 'imei-' + Date.now() // For animation
+    };
+    
+    currentBill.push(billItem);
     imeiInBill.push(item);
     hasImeiInBill = true;
+    
     // Show customer box and highlight button
     document.getElementById('pos-customer-box').style.display = 'block';
     const custBtn = document.getElementById('btn-toggle-customer');
     custBtn.classList.add('btn-primary');
     custBtn.classList.remove('btn-outline');
-    toast(`IMEI added: ${item.imei_number}`);
+    
+    toast(`IMEI added: ${item.imei_number}`, 'success');
+    showLastScanned(`${item.product_name} (${item.imei_number})`);
     renderBill();
+    
+    // Add a flash effect to the newly added item
+    setTimeout(() => {
+        const itemEl = document.querySelector(`[data-imei="${item.imei_number}"]`);
+        if (itemEl) {
+            itemEl.classList.add('scan-flash');
+            setTimeout(() => itemEl.classList.remove('scan-flash'), 800);
+        }
+    }, 100);
+}
+
+function showLastScanned(val) {
+    const el = document.getElementById('last-scanned');
+    const valEl = document.getElementById('last-scanned-val');
+    if (el && valEl) {
+        el.style.display = 'flex';
+        valEl.textContent = val;
+        // Hide after 10 seconds or keep it until next scan? 
+        // Let's keep it until next scan.
+    }
 }
 
 function renderBill() {
     const el = document.getElementById('bill-items');
     el.innerHTML = currentBill.map((b, i) => `
-        <div class="bill-item">
-            <div class="bill-item-info"><h4>${b.name}</h4>
-                <p><span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> ${b.is_imei_item ? `<span class="imei-tag">${b.imei_number}</span>` : `x ${b.quantity}`}</p></div>
+        <div class="bill-item" ${b.is_imei_item ? `data-imei="${b.imei_number}"` : ''}>
+            <div class="bill-item-info">
+                <h4 style="display:flex;align-items:center;gap:6px">
+                    ${b.is_imei_item ? '<i class="bx bx-chip" style="color:var(--info)"></i>' : ''}
+                    ${b.name}
+                </h4>
+                <p>
+                    <span class="price-edit" onclick="editBillPrice(${i})" title="Click to edit price" style="cursor:pointer;border-bottom:1px dashed var(--primary)">Rs. ${b.price.toLocaleString()}</span> 
+                    ${b.is_imei_item ? `<span class="imei-tag" style="margin-left:8px;font-size:11px;padding:2px 8px;background:var(--info-light);color:var(--info);border-radius:4px;font-family:monospace;font-weight:700"># ${b.imei_number}</span>` : `x ${b.quantity}`}
+                </p>
+            </div>
             <div class="bill-item-actions">
                 ${!b.is_imei_item ? `<div class="qty-ctrl">
                     <button class="qty-btn" onclick="changeBillQty(${i},-1)">-</button><span>${b.quantity}</span>
@@ -670,6 +714,12 @@ function setupSLT() {
     document.getElementById('slt-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     document.getElementById('btn-slt-generate').onclick = loadSLTReport;
     document.getElementById('btn-slt-export').onclick = exportSLT;
+    
+    // Select all handler
+    document.getElementById('slt-select-all')?.addEventListener('change', function() {
+        const cbs = document.querySelectorAll('.slt-row-cb');
+        cbs.forEach(cb => cb.checked = this.checked);
+    });
 }
 
 async function loadSLTReport() {
@@ -681,17 +731,61 @@ async function loadSLTReport() {
         const items = await res.json();
         const tb = document.querySelector('#slt-table tbody');
         tb.innerHTML = items.map((i,idx) => `<tr>
+            <td><input type="checkbox" class="slt-row-cb" data-id="${i.id}"></td>
             <td>${idx+1}</td><td><code>${i.imei_number}</code></td><td>${i.product_name}</td>
             <td>${i.customer_name||'-'}</td><td>${i.customer_phone||'-'}</td><td>${i.customer_nic||'-'}</td>
             <td>${i.purchase_date?formatDate(i.purchase_date):'-'}</td><td>${i.warranty_months}m</td>
-        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">No records for this month</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">No records for this month</td></tr>';
+        
+        // Reset select all
+        const selectAll = document.getElementById('slt-select-all');
+        if (selectAll) selectAll.checked = false;
     } catch(e) { console.error(e); }
 }
 
-function exportSLT() {
+async function exportSLT() {
     const month = document.getElementById('slt-month').value;
-    if (!month) return toast('Select month','error');
-    window.open(`${API}/reports/slt/export?month=${month}`, '_blank');
+    if (!month) return toast('Select month', 'error');
+
+    // Get selected IDs
+    const selectedCbs = document.querySelectorAll('.slt-row-cb:checked');
+    const selectedIds = Array.from(selectedCbs).map(cb => cb.dataset.id);
+    
+    let url = `${API}/reports/slt/export?month=${month}`;
+    if (selectedIds.length > 0) {
+        url += `&ids=${selectedIds.join(',')}`;
+    }
+
+    try {
+        const btn = document.getElementById('btn-slt-export');
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Downloading...';
+
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!res.ok) throw new Error('Export failed');
+        
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `SLT_Report_${month}_${selectedIds.length > 0 ? 'selected' : 'all'}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        toast('Report downloaded successfully');
+    } catch(e) {
+        toast(e.message, 'error');
+    } finally {
+        const btn = document.getElementById('btn-slt-export');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bx bx-download"></i> Export Excel';
+    }
 }
 
 // === REPORTS ===
