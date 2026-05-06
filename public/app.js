@@ -60,7 +60,10 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
         const res = await fetch(API+'/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ email:document.getElementById('login-email').value, password:document.getElementById('login-password').value })
+            body: JSON.stringify({ 
+                email: document.getElementById('login-email').value.toLowerCase().trim(), 
+                password: document.getElementById('login-password').value 
+            })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
@@ -75,7 +78,7 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     try {
         const res = await fetch(API+'/auth/register', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ 
-                email: document.getElementById('reg-email').value, 
+                email: document.getElementById('reg-email').value.toLowerCase().trim(), 
                 password: document.getElementById('reg-password').value, 
                 business_name: document.getElementById('reg-business').value,
                 whatsapp_number: document.getElementById('reg-whatsapp').value
@@ -92,7 +95,7 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
     try {
         const res = await fetch(API+'/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
-                email: document.getElementById('forgot-email').value,
+                email: document.getElementById('forgot-email').value.toLowerCase().trim(),
                 business_name: document.getElementById('forgot-business').value,
                 new_password: document.getElementById('forgot-password').value
             })

@@ -7,9 +7,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Connect to MongoDB
-if (process.env.NODE_ENV !== 'production') {
-    connectDB().then(() => { initializeDatabase(); });
-}
+connectDB().then(() => { initializeDatabase(); });
+
 
 // Middleware
 app.use(cors());

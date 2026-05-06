@@ -5,13 +5,14 @@ const { User } = require('../database');
 // Register
 router.post('/register', async (req, res) => {
     const { email, password, business_name, whatsapp_number } = req.body;
-    if (!email || !password || !business_name) {
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail || !password || !business_name) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     try {
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
-        await User.create({ email, password, business_name, whatsapp_number, is_active: false });
+        await User.create({ email: normalizedEmail, password, business_name, whatsapp_number, is_active: false });
         res.status(201).json({ message: 'Account creation successful. Pending admin approval.' });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -21,9 +22,10 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail || !password) return res.status(400).json({ error: 'Missing required fields' });
     try {
-        const user = await User.findOne({ email, password });
+        const user = await User.findOne({ email: normalizedEmail, password });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
         if (!user.is_active && user.role !== 'admin') {
             return res.status(403).json({ error: 'Account pending admin approval' });
@@ -37,9 +39,10 @@ router.post('/login', async (req, res) => {
 // Reset Password
 router.post('/reset-password', async (req, res) => {
     const { email, business_name, new_password } = req.body;
-    if (!email || !business_name || !new_password) return res.status(400).json({ error: 'Missing required fields' });
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail || !business_name || !new_password) return res.status(400).json({ error: 'Missing required fields' });
     try {
-        const user = await User.findOne({ email, business_name });
+        const user = await User.findOne({ email: normalizedEmail, business_name });
         if (!user) return res.status(404).json({ error: 'Account not found' });
         user.password = new_password;
         await user.save();
@@ -84,7 +87,7 @@ router.put('/profile', async (req, res) => {
 
         const { business_name, email, whatsapp_number, password, invoice_settings, invoice_templates } = req.body;
         if (business_name) user.business_name = business_name;
-        if (email) user.email = email;
+        if (email) user.email = email.toLowerCase().trim();
         if (whatsapp_number !== undefined) user.whatsapp_number = whatsapp_number;
         if (password && password.trim()) user.password = password;
         if (invoice_settings) {

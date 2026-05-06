@@ -32,10 +32,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-        res.json({ discount_type: voucher.discount_type, discount_value: voucher.discount_value, code: voucher.code });
+res.json({ discount_type: voucher.discount_type, discount_value: voucher.discount_value, code: voucher.code });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
+    return res.status(500).json({ error: err.message });
+}
 });
 
 router.put('/:id', async (req, res) => {
