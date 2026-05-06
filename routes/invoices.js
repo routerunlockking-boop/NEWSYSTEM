@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Invoice, Product, ImeiItem, Customer, Voucher } = require('../database');
+const { Invoice, Product, ImeiItem, Customer } = require('../database');
 
 // Helper to strictly synchronize Product stock count with actual "In Stock" IMEI items
 async function syncProductStock(product_id) {
@@ -117,21 +117,9 @@ router.post('/', async (req, res) => {
             cashier_name: cashier_name || 'System',
             payment_method: payment_method || 'Cash',
             date, time,
-            subtotal_amount: req.body.subtotal_amount || (parsedTotal + (parseFloat(req.body.voucher_discount) || 0)),
-            voucher_code: req.body.voucher_code || '',
-            voucher_discount: parseFloat(req.body.voucher_discount) || 0,
             total_amount: parsedTotal, amount_paid: parsedPaid,
             total_profit, items: formattedItems
         });
-
-        // Update voucher usage if applicable
-        if (req.body.voucher_code) {
-            await Voucher.findOneAndUpdate(
-                { code: req.body.voucher_code.toUpperCase(), user_id: req.user._id },
-                { $inc: { used_count: 1 } }
-            );
-        }
-
 
         // Save or update customer
         if (customer_name && customer_phone) {

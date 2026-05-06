@@ -25,7 +25,7 @@ router.put('/users/:id', adminOnly, async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
-        if (email) user.email = email.toLowerCase().trim();
+        if (email) user.email = email;
         if (business_name) user.business_name = business_name;
         if (whatsapp_number !== undefined) user.whatsapp_number = whatsapp_number;
         if (is_active !== undefined) user.is_active = is_active;

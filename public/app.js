@@ -7,8 +7,6 @@ let hasImeiInBill = false;
 let scanModeActive = false;
 let voucherDiscount = 0;
 let voucherCode = '';
-let voucherType = ''; // 'percentage' or 'fixed'
-let voucherValue = 0;
 
 // === UTILITY ===
 function toast(msg, type='success') {
@@ -60,10 +58,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
         const res = await fetch(API+'/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ 
-                email: document.getElementById('login-email').value.toLowerCase().trim(), 
-                password: document.getElementById('login-password').value 
-            })
+            body: JSON.stringify({ email:document.getElementById('login-email').value, password:document.getElementById('login-password').value })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
@@ -78,7 +73,7 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     try {
         const res = await fetch(API+'/auth/register', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ 
-                email: document.getElementById('reg-email').value.toLowerCase().trim(), 
+                email: document.getElementById('reg-email').value, 
                 password: document.getElementById('reg-password').value, 
                 business_name: document.getElementById('reg-business').value,
                 whatsapp_number: document.getElementById('reg-whatsapp').value
@@ -95,7 +90,7 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
     try {
         const res = await fetch(API+'/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
-                email: document.getElementById('forgot-email').value.toLowerCase().trim(),
+                email: document.getElementById('forgot-email').value,
                 business_name: document.getElementById('forgot-business').value,
                 new_password: document.getElementById('forgot-password').value
             })
@@ -281,7 +276,6 @@ function setupNav() {
             if(target==='reports-view') loadReports('sales');
             if(target==='admin-view') loadAdmin();
             if(target==='barcode-view') loadBarcodePrinter();
-            if(target==='vouchers-view') loadVouchers();
             if(target==='slt-view') { /* ready for generate */ }
         };
     });
@@ -982,9 +976,8 @@ function setupAll() {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
-    setupBarcodePrinter(); setupVoucherModal();
+    setupBarcodePrinter();
 }
-
 
 document.addEventListener('DOMContentLoaded', () => {
     setupAll();
@@ -997,7 +990,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentBill.length && !confirm('Clear the current bill?')) return;
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
         voucherDiscount = 0; voucherCode = '';
-        voucherType = ''; voucherValue = 0;
         document.getElementById('pos-customer-box').style.display = 'none';
         const custBtn = document.getElementById('btn-toggle-customer');
         if (custBtn) { custBtn.classList.remove('btn-primary'); custBtn.classList.add('btn-outline'); }
