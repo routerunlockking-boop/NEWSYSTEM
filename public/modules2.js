@@ -872,7 +872,11 @@ async function viewInvoice(id) {
             <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>
                 ${inv.items.map(i => `<tr><td>${i.product_name}${i.imei_number?`<br><small>IMEI: ${i.imei_number}</small>`:''}</td><td>${i.quantity}</td><td>${i.price.toFixed(2)}</td><td>${i.subtotal.toFixed(2)}</td></tr>`).join('')}
             </tbody></table>
-            <div style="text-align:right;margin-top:10px;font-size:16px"><strong>Total: Rs. ${inv.total_amount.toFixed(2)}</strong></div>
+            ${inv.discount_amount ? `
+                <div style="text-align:right;margin-top:5px;color:var(--text-muted)">Subtotal: Rs. ${(inv.total_amount + inv.discount_amount).toFixed(2)}</div>
+                <div style="text-align:right;color:var(--success);font-weight:600">Discount: -Rs. ${inv.discount_amount.toFixed(2)} ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</div>
+            ` : ''}
+            <div style="text-align:right;margin-top:5px;font-size:18px"><strong>Total: Rs. ${inv.total_amount.toFixed(2)}</strong></div>
             <div style="text-align:right;color:var(--text-muted)">Paid: Rs. ${(inv.amount_paid||0).toFixed(2)} | Method: ${inv.payment_method||'Cash'}</div>
         `;
         document.getElementById('btn-reprint-invoice').onclick = () => printReceipt(inv);

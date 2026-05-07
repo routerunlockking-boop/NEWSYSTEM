@@ -49,7 +49,8 @@ router.put('/:id', async (req, res) => {
 router.post('/validate', async (req, res) => {
     try {
         const { code } = req.body;
-        const voucher = await Voucher.findOne({ code: code.toUpperCase(), status: 'active' });
+        const query = req.user.role === 'admin' ? { code: code.toUpperCase(), status: 'active' } : { user_id: req.user._id, code: code.toUpperCase(), status: 'active' };
+        const voucher = await Voucher.findOne(query);
         if (!voucher) return res.status(404).json({ error: 'Voucher not found or inactive' });
         if (voucher.usage_limit && voucher.used_count >= voucher.usage_limit) {
             return res.status(400).json({ error: 'Voucher usage limit reached' });

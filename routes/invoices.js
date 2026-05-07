@@ -57,6 +57,8 @@ router.get('/:id', async (req, res) => {
             payment_method: invoice.payment_method || 'Cash',
             date: invoice.date, time: invoice.time,
             total_amount: invoice.total_amount,
+            voucher_code: invoice.voucher_code || '',
+            discount_amount: invoice.voucher_discount || 0,
             owner_name: invoice.user_id ? invoice.user_id.business_name : 'Unknown',
             items: invoice.items.map(item => ({
                 product_name: item.product_name, quantity: item.quantity,
@@ -72,7 +74,7 @@ router.get('/:id', async (req, res) => {
 
 // Create invoice
 router.post('/', async (req, res) => {
-    const { items, total_amount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, customer_email, payment_method, imei_items } = req.body;
+    const { items, total_amount, amount_paid, cashier_name, customer_name, customer_phone, customer_address, customer_nic, customer_email, payment_method, imei_items, voucher_code, discount_amount } = req.body;
     const parsedTotal = parseFloat(total_amount) || 0;
     const parsedPaid = parseFloat(amount_paid) || 0;
     if (!items || items.length === 0) return res.status(400).json({ error: 'Invalid invoice data' });
@@ -118,8 +120,19 @@ router.post('/', async (req, res) => {
             payment_method: payment_method || 'Cash',
             date, time,
             total_amount: parsedTotal, amount_paid: parsedPaid,
+            voucher_code: voucher_code || '',
+            voucher_discount: parseFloat(discount_amount) || 0,
             total_profit, items: formattedItems
         });
+
+        // Update voucher usage count
+        if (voucher_code) {
+            const { Voucher } = require('../database');
+            await Voucher.findOneAndUpdate(
+                { user_id: req.user._id, code: voucher_code.toUpperCase() },
+                { $inc: { used_count: 1 } }
+            );
+        }
 
         // Save or update customer
         if (customer_name && customer_phone) {
@@ -203,6 +216,8 @@ router.post('/', async (req, res) => {
                 cashier_name: invoice.cashier_name || 'System',
                 customer_name, customer_phone, date, time,
                 total_amount: parsedTotal, amount_paid: parsedPaid,
+                discount_amount: invoice.voucher_discount,
+                voucher_code: invoice.voucher_code,
                 items: formattedItems
             }
         });
