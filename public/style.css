@@ -492,3 +492,9 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
 }
 
 .imei-select-item:hover { background: rgba(59, 130, 246, 0.1); border-color: var(--primary) !important; transform: translateX(5px); } .imei-select-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s ease; }
+
+ / *   V o u c h e r   &   P r i c e   E d i t   * / 
+ . p r i c e - e d i t : h o v e r   {   c o l o r :   v a r ( - - p r i m a r y ) ;   } 
+ # v o u c h e r - d i s c o u n t - r o w   {   f o n t - w e i g h t :   6 0 0 ;   f o n t - s i z e :   1 3 p x ;   } 
+ . v o u c h e r - r o w   i n p u t : f o c u s   {   b o r d e r - c o l o r :   v a r ( - - p r i m a r y ) ;   }  
+ 

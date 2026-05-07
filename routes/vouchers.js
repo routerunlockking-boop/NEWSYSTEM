@@ -32,6 +32,20 @@ router.post('/', async (req, res) => {
     }
 });
 
+router.put('/:id', async (req, res) => {
+    const { code, discount_type, discount_value, usage_limit, expiry_date, status } = req.body;
+    try {
+        const voucher = await Voucher.findByIdAndUpdate(req.params.id, {
+            code: code ? code.toUpperCase() : undefined,
+            discount_type, discount_value, usage_limit, expiry_date, status
+        }, { new: true });
+        if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
+        res.json({ message: 'Voucher updated' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/validate', async (req, res) => {
     try {
         const { code } = req.body;

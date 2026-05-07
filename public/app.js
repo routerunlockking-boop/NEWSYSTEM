@@ -274,6 +274,7 @@ function setupNav() {
             if(target==='invoices-view') loadInvoices();
             if(target==='design-view') loadInvoiceDesigner();
             if(target==='reports-view') loadReports('sales');
+            if(target==='vouchers-view') loadVouchers();
             if(target==='admin-view') loadAdmin();
             if(target==='barcode-view') loadBarcodePrinter();
             if(target==='slt-view') { /* ready for generate */ }
@@ -976,7 +977,7 @@ function setupAll() {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
-    setupBarcodePrinter();
+    setupBarcodePrinter(); setupVoucherModal();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1004,3 +1005,97 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBill();
     };
 });
+
+// === VOUCHERS ===
+let vouchersList = [];
+async function loadVouchers() {
+    try {
+        const res = await api(`/vouchers?_t=${Date.now()}`);
+        if (!res) return;
+        vouchersList = await res.json();
+        const tb = document.querySelector('#vouchers-table tbody');
+        if (tb) {
+            tb.innerHTML = vouchersList.map(v => `<tr>
+                <td><strong>${v.code}</strong></td>
+                <td>${v.discount_type === 'percentage' ? 'Percentage' : 'Fixed'}</td>
+                <td>${v.discount_type === 'percentage' ? v.discount_value + '%' : 'Rs. ' + v.discount_value}</td>
+                <td>${v.used_count} / ${v.usage_limit || '∞'}</td>
+                <td>${v.expiry_date ? formatDate(v.expiry_date) : 'No expiry'}</td>
+                <td><span class="badge badge-${v.status === 'active' ? 'green' : 'gray'}">${v.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline" onclick="editVoucher('${v.id}')"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteVoucher('${v.id}')"><i class='bx bx-trash'></i></button>
+                </td>
+            </tr>`).join('');
+        }
+    } catch (e) { console.error(e); }
+}
+
+function setupVoucherModal() {
+    const btnAdd = document.getElementById('btn-add-voucher');
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            document.getElementById('voucher-form').reset();
+            document.getElementById('vouch-id').value = '';
+            document.getElementById('voucher-modal-title').textContent = 'Create Voucher';
+            openModal('modal-voucher');
+        };
+    }
+
+    const btnSave = document.getElementById('btn-save-voucher');
+    if (btnSave) {
+        btnSave.onclick = async () => {
+            const id = document.getElementById('vouch-id').value;
+            const data = {
+                code: document.getElementById('vouch-code').value.trim(),
+                discount_type: document.getElementById('vouch-type').value,
+                discount_value: parseFloat(document.getElementById('vouch-value').value),
+                usage_limit: parseInt(document.getElementById('vouch-limit').value) || null,
+                expiry_date: document.getElementById('vouch-expiry').value,
+                status: document.getElementById('vouch-status').value
+            };
+
+            if (!data.code || isNaN(data.discount_value)) {
+                return toast('Code and Value are required', 'error');
+            }
+
+            try {
+                const res = await api(id ? `/vouchers/${id}` : '/vouchers', {
+                    method: id ? 'PUT' : 'POST',
+                    body: JSON.stringify(data)
+                });
+                if (!res) return;
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.error);
+                toast(id ? 'Voucher updated' : 'Voucher created');
+                closeModal('modal-voucher');
+                loadVouchers();
+            } catch (e) { toast(e.message, 'error'); }
+        };
+    }
+}
+
+window.editVoucher = function(id) {
+    const v = vouchersList.find(x => x.id === id);
+    if (!v) return;
+    document.getElementById('vouch-id').value = v.id;
+    document.getElementById('vouch-code').value = v.code;
+    document.getElementById('vouch-type').value = v.discount_type;
+    document.getElementById('vouch-value').value = v.discount_value;
+    document.getElementById('vouch-limit').value = v.usage_limit || '';
+    document.getElementById('vouch-expiry').value = v.expiry_date ? v.expiry_date.split('T')[0] : '';
+    document.getElementById('vouch-status').value = v.status;
+    document.getElementById('voucher-modal-title').textContent = 'Edit Voucher';
+    openModal('modal-voucher');
+};
+
+window.deleteVoucher = async function(id) {
+    if (!confirm('Delete this voucher?')) return;
+    try {
+        const res = await api(`/vouchers/${id}`, { method: 'DELETE' });
+        if (!res) return;
+        if (!res.ok) throw new Error('Failed to delete');
+        toast('Voucher deleted');
+        loadVouchers();
+    } catch (e) { toast(e.message, 'error'); }
+};

@@ -138,6 +138,7 @@ function setupPOS() {
         renderPOSGrid(q);
     });
     document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
+    document.getElementById('btn-apply-voucher').addEventListener('click', applyVoucher);
     document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
     
     // Handle customer selection in POS
@@ -388,11 +389,59 @@ function removeBillItem(i) {
 }
 
 function updateBillTotals() {
-    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    let discount = 0;
+    
+    if (voucherDiscount > 0) {
+        // voucherDiscount is set by applyVoucher (either fixed or percentage calculation)
+        discount = voucherDiscount;
+    }
+
+    const total = subtotal - discount;
     const paid = parseFloat(document.getElementById('pos-paid').value) || 0;
-    document.getElementById('pos-subtotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
+    
+    document.getElementById('pos-subtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits:2});
+    
+    if (discount > 0) {
+        document.getElementById('voucher-discount-row').style.display = 'flex';
+        document.getElementById('pos-discount').textContent = '-' + discount.toLocaleString(undefined, {minimumFractionDigits:2});
+    } else {
+        document.getElementById('voucher-discount-row').style.display = 'none';
+    }
+    
     document.getElementById('pos-total').textContent = total.toLocaleString(undefined, {minimumFractionDigits:2});
     document.getElementById('pos-balance').textContent = (paid - total).toLocaleString(undefined, {minimumFractionDigits:2});
+}
+
+async function applyVoucher() {
+    const code = document.getElementById('pos-voucher').value.trim();
+    if (!code) return toast('Enter voucher code', 'error');
+    
+    try {
+        const res = await api('/vouchers/validate', {
+            method: 'POST',
+            body: JSON.stringify({ code })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        
+        voucherCode = d.code;
+        const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+        
+        if (d.discount_type === 'percentage') {
+            voucherDiscount = (subtotal * d.discount_value) / 100;
+        } else {
+            voucherDiscount = d.discount_value;
+        }
+        
+        toast(`Voucher Applied! Discount: Rs. ${voucherDiscount.toLocaleString()}`);
+        updateBillTotals();
+    } catch (e) {
+        voucherDiscount = 0;
+        voucherCode = '';
+        updateBillTotals();
+        toast(e.message, 'error');
+    }
 }
 
 async function submitBill() {
@@ -409,7 +458,7 @@ async function submitBill() {
         const caddr = document.getElementById('pos-cust-address').value.trim();
         if (!cn || !cp || !cnic || !caddr) { toast('Customer details required for IMEI items', 'error'); return; }
     }
-    const total = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
+    const subtotal = currentBill.reduce((s, b) => s + b.price * b.quantity, 0);
     const data = {
         items: currentBill.map(b => ({ 
             name: b.name, price: b.price, quantity: b.quantity, 
@@ -421,7 +470,9 @@ async function submitBill() {
             router_model: b.router_model || ''
         })),
         imei_items: imeiInBill.map(i => ({ imei_id: i.id, selling_price: i.selling_price })),
-        total_amount: total,
+        total_amount: subtotal - voucherDiscount,
+        discount_amount: voucherDiscount,
+        voucher_code: voucherCode,
         amount_paid: parseFloat(document.getElementById('pos-paid').value) || 0,
         payment_method: document.getElementById('pos-payment').value,
         cashier_name: cashierName,
@@ -439,7 +490,10 @@ async function submitBill() {
         toast('Bill created successfully!');
         await printReceipt(d.invoice);
         currentBill = []; imeiInBill = []; hasImeiInBill = false;
+        voucherDiscount = 0; voucherCode = '';
         document.getElementById('pos-customer-box').style.display = 'none';
+        document.getElementById('voucher-discount-row').style.display = 'none';
+        document.getElementById('pos-voucher').value = '';
         const custBtn = document.getElementById('btn-toggle-customer');
         custBtn.classList.remove('btn-primary');
         custBtn.classList.add('btn-outline');
@@ -559,7 +613,8 @@ async function printReceipt(inv) {
             } else if (blockId === 'totals') {
                 finalHtml += `
                     <div style="font-size:12px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${labels.label_subtotal || ''}</span><span>${(inv.total_amount + (inv.discount_amount || 0)).toFixed(2)}</span></div>
+                        ${inv.discount_amount ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;"><span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span><span>-${inv.discount_amount.toFixed(2)}</span></div>` : ''}
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;"><span>${labels.label_total || ''}</span><span>${inv.total_amount.toFixed(2)}</span></div>
                         <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
@@ -624,8 +679,13 @@ async function printReceipt(inv) {
                 <div style="font-size:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                         <span>${invSettings.label_subtotal}</span>
-                        <span>${inv.total_amount.toFixed(2)}</span>
+                        <span>${(inv.total_amount + (inv.discount_amount || 0)).toFixed(2)}</span>
                     </div>
+                    ${inv.discount_amount ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>Discount ${inv.voucher_code ? `(${inv.voucher_code})` : ''}</span>
+                        <span>-${inv.discount_amount.toFixed(2)}</span>
+                    </div>` : ''}
                     <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:6px 0;">
                         <span>${invSettings.label_total}</span>
