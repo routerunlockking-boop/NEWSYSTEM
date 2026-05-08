@@ -629,10 +629,10 @@ function updateLivePreview() {
         } else if (blockId === 'people_info') {
             previewHtml += `
                 <div style="font-size:11px;font-weight:500;margin-bottom:8px;">
-                    <div style="margin-bottom:4px;">${currentLabels.label_cashier} <strong>John Doe</strong></div>
+                    <div style="margin-bottom:4px;">${currentLabels.label_cashier} <strong>Smart Zone</strong></div>
                     <div style="margin-top:6px;">
-                        <div style="font-weight:700;">${currentLabels.label_customer} Jane Smith</div>
-                        <div>${currentLabels.label_tel} 0712345678</div>
+                        <div style="font-weight:700;">${currentLabels.label_customer} Pamidu</div>
+                        <div>${currentLabels.label_tel} 0786800086</div>
                     </div>
                 </div>
             `;
