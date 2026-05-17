@@ -164,19 +164,83 @@ async function loadImeiList() {
         const res = await api(url);
         if (!res) return;
         const items = await res.json();
-        const tb = document.querySelector('#imei-table tbody');
-        tb.innerHTML = items.map(i => `<tr>
-            <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code>
-                ${(i.product_category && i.product_category.toLowerCase().includes('sim')) ? `<br><small class="text-primary">SLT: ${i.slt_number || '-'}</small>` : ''}</td>
-            <td>${i.product_name}</td>
-            <td>${statusBadge(i.status)}</td>
-            <td>${i.customer_name||'-'}<br><small style="color:var(--text-muted)">${i.customer_phone||''}</small></td>
-            <td>${i.warranty_expiry_date ? formatDate(i.warranty_expiry_date) : '-'}</td>
-            <td><button class="btn btn-sm btn-outline" onclick="viewImeiDetail('${i.id}')"><i class='bx bx-show'></i></button>
-                ${i.status!=='Sold'?`<button class="btn btn-sm btn-danger" onclick="deleteImei('${i.id}')"><i class='bx bx-trash'></i></button>`:''}</td>
-        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No IMEI items found</td></tr>';
+
+        // Group items by product name
+        const groups = {};
+        items.forEach(i => {
+            const key = i.product_name || 'Unknown';
+            if (!groups[key]) groups[key] = { product_id: i.product_id, category: i.product_category, items: [] };
+            groups[key].items.push(i);
+        });
+
+        const container = document.getElementById('imei-groups');
+
+        if (Object.keys(groups).length === 0) {
+            container.innerHTML = `<div class="table-card"><div class="imei-group-empty"><i class='bx bx-search' style="font-size:28px;display:block;margin-bottom:8px"></i>No IMEI items found</div></div>`;
+            return;
+        }
+
+        // Sort groups alphabetically
+        const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+
+        container.innerHTML = sortedKeys.map(productName => {
+            const g = groups[productName];
+            const inStock = g.items.filter(i => i.status === 'In Stock').length;
+            const sold = g.items.filter(i => i.status === 'Sold').length;
+            const other = g.items.length - inStock - sold;
+            const isSim = g.category && g.category.toLowerCase().includes('sim');
+
+            const rows = g.items.map(i => `<tr>
+                <td><code style="font-size:13px;font-weight:600">${i.imei_number}</code>
+                    ${isSim ? `<br><small class="text-primary">SLT: ${i.slt_number || '-'}</small>` : ''}</td>
+                <td>${statusBadge(i.status)}</td>
+                <td>${i.customer_name || '-'}<br><small style="color:var(--text-muted)">${i.customer_phone || ''}</small></td>
+                <td>${i.warranty_expiry_date ? formatDate(i.warranty_expiry_date) : '-'}</td>
+                <td><button class="btn btn-sm btn-outline" onclick="viewImeiDetail('${i.id}')"><i class='bx bx-show'></i></button>
+                    ${i.status !== 'Sold' ? `<button class="btn btn-sm btn-danger" onclick="deleteImei('${i.id}')"><i class='bx bx-trash'></i></button>` : ''}</td>
+            </tr>`).join('');
+
+            return `<div class="imei-product-group">
+                <div class="imei-group-header" onclick="toggleImeiGroup(this)">
+                    <div class="imei-group-left">
+                        <div class="imei-group-icon"><i class='bx ${isSim ? "bx-chip" : "bx-devices"}'></i></div>
+                        <span class="imei-group-name">${productName}</span>
+                    </div>
+                    <div class="imei-group-meta">
+                        ${inStock ? `<span><i class='bx bx-check-circle' style="color:var(--success)"></i> ${inStock} In Stock</span>` : ''}
+                        ${sold ? `<span><i class='bx bx-cart' style="color:var(--info)"></i> ${sold} Sold</span>` : ''}
+                        ${other ? `<span><i class='bx bx-transfer' style="color:var(--warning)"></i> ${other} Other</span>` : ''}
+                        <span class="imei-group-count">${g.items.length} total</span>
+                    </div>
+                    <i class='bx bx-chevron-down imei-group-chevron'></i>
+                </div>
+                <div class="imei-group-body">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>IMEI / Serial</th><th>Status</th><th>Customer</th><th>Warranty</th><th>Actions</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // If search is active, auto-expand all groups so results are visible
+        if (search || status) {
+            container.querySelectorAll('.imei-group-header').forEach(h => {
+                h.classList.add('expanded');
+                h.nextElementSibling.classList.add('open');
+            });
+        }
     } catch(e) { console.error(e); }
 }
+
+window.toggleImeiGroup = function(header) {
+    const body = header.nextElementSibling;
+    const isOpen = body.classList.contains('open');
+    header.classList.toggle('expanded', !isOpen);
+    body.classList.toggle('open', !isOpen);
+};
 
 // Search/filter listeners
 document.getElementById('imei-search').addEventListener('input', debounce(loadImeiList, 400));
