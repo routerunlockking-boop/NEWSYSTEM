@@ -128,4 +128,74 @@ router.put('/payments/:id/pay', async (req, res) => {
     }
 });
 
+// Manually add a supplier payment record
+router.post('/payments', async (req, res) => {
+    try {
+        const { supplier_name, product_name, quantity, cost_price, total_amount, paid_amount, notes } = req.body;
+        if (!supplier_name) return res.status(400).json({ error: 'Supplier Name is required' });
+        
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        
+        const payment = await SupplierPayment.create({
+            user_id: req.user._id,
+            supplier_name,
+            product_name: product_name || 'Manual Entry',
+            quantity: quantity || 1,
+            cost_price: cost_price || 0,
+            total_amount: total_amount || 0,
+            paid_amount: paid_amount || 0,
+            is_paid: (paid_amount || 0) >= (total_amount || 0) && (total_amount || 0) > 0,
+            paid_date: (paid_amount || 0) >= (total_amount || 0) && (total_amount || 0) > 0 ? today : '',
+            sale_date: today,
+            notes: notes || 'Manually added record'
+        });
+        res.status(201).json({ message: 'Payment record added', payment });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Update a supplier payment record (Edit)
+router.put('/payments/:id', async (req, res) => {
+    try {
+        const { supplier_name, product_name, quantity, cost_price, total_amount, paid_amount, notes } = req.body;
+        const payment = await SupplierPayment.findById(req.params.id);
+        if (!payment) return res.status(404).json({ error: 'Payment not found' });
+        
+        if (supplier_name) payment.supplier_name = supplier_name;
+        if (product_name) payment.product_name = product_name;
+        if (quantity !== undefined) payment.quantity = quantity;
+        if (cost_price !== undefined) payment.cost_price = cost_price;
+        if (total_amount !== undefined) payment.total_amount = total_amount;
+        if (paid_amount !== undefined) payment.paid_amount = paid_amount;
+        if (notes !== undefined) payment.notes = notes;
+        
+        if (payment.paid_amount >= payment.total_amount && payment.total_amount > 0) {
+            payment.is_paid = true;
+            if (!payment.paid_date) {
+                payment.paid_date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            }
+        } else {
+            payment.is_paid = false;
+            payment.paid_date = '';
+        }
+        
+        await payment.save();
+        res.json({ message: 'Payment updated', payment });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a supplier payment record
+router.delete('/payments/:id', async (req, res) => {
+    try {
+        const payment = await SupplierPayment.findByIdAndDelete(req.params.id);
+        if (!payment) return res.status(404).json({ error: 'Payment not found' });
+        res.json({ message: 'Payment record deleted' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

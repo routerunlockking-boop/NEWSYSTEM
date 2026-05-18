@@ -312,6 +312,7 @@
                 <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
                     <h3><i class='bx bx-money' style="color:var(--primary)"></i> Supplier Payments</h3>
                     <div style="display:flex;gap:8px;align-items:center">
+                        <button class="btn btn-primary btn-sm" id="btn-add-sup-payment"><i class='bx bx-plus'></i> Add Record</button>
                         <select id="sup-payment-filter" class="form-control" style="width:140px;font-size:12px">
                             <option value="">All</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option>
                         </select>
@@ -574,6 +575,31 @@
     <div class="modal-foot">
         <button class="btn btn-outline" onclick="closeCameraScanner()">Close</button>
     </div>
+</div></div>
+
+<!-- Supplier Payment Record Modal (Manual Add/Edit) -->
+<div class="modal-bg" id="modal-supplier-record"><div class="modal"><div class="modal-head"><h3 id="sup-record-title"><i class='bx bx-list-plus' style="color:var(--primary)"></i> Supplier Record</h3><button class="close-btn" onclick="closeModal('modal-supplier-record')">&times;</button></div>
+<div class="modal-body"><form id="supplier-record-form">
+    <input type="hidden" id="sup-rec-id">
+    <div class="form-row">
+        <div class="form-group"><label>Supplier Name *</label><input type="text" id="sup-rec-supplier" class="form-control" required list="sup-rec-supplier-list">
+        <datalist id="sup-rec-supplier-list"></datalist></div>
+        <div class="form-group"><label>Product / Reference</label><input type="text" id="sup-rec-product" class="form-control" placeholder="Optional"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Quantity</label><input type="number" id="sup-rec-qty" class="form-control" value="1" min="1"></div>
+        <div class="form-group"><label>Cost Price</label><input type="number" id="sup-rec-cost" class="form-control" step="0.01"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Total Amount Owed *</label><input type="number" id="sup-rec-total" class="form-control" step="0.01" required></div>
+        <div class="form-group"><label>Already Paid Amount</label><input type="number" id="sup-rec-paid" class="form-control" step="0.01" value="0"></div>
+    </div>
+    <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="sup-rec-notes" class="form-control" placeholder="E.g. manual entry, credit...">
+    </div>
+</form></div>
+<div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-supplier-record')">Cancel</button><button class="btn btn-primary" id="btn-save-sup-record"><i class='bx bx-save'></i> Save Record</button></div>
 </div></div>
 
 <!-- Supplier Payment Modal -->

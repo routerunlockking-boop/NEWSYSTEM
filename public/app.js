@@ -1121,6 +1121,7 @@ window.deleteVoucher = async function(id) {
 };
 
 // === SUPPLIER PAYMENTS ===
+let supplierPaymentsList = [];
 async function loadSupplierPayments() {
     try {
         const statusFilter = document.getElementById('sup-payment-filter')?.value || '';
@@ -1131,7 +1132,8 @@ async function loadSupplierPayments() {
         url += `_t=${Date.now()}`;
         const res = await api(url);
         if (!res) return;
-        const payments = await res.json();
+        supplierPaymentsList = await res.json();
+        const payments = supplierPaymentsList;
 
         // Summary
         const totalOwed = payments.filter(p => !p.is_paid).reduce((s, p) => s + (p.total_amount - (p.paid_amount || 0)), 0);
@@ -1173,9 +1175,13 @@ async function loadSupplierPayments() {
             <td>${p.is_paid ?
                 `<span class="badge badge-green">Paid</span><br><small style="color:var(--text-muted)">${p.paid_date}</small>` :
                 '<span class="badge badge-red">Unpaid</span>'}</td>
-            <td>${!p.is_paid ?
-                `<button class="btn btn-sm btn-success" onclick="openSupplierPayModal('${p.id}', ${p.total_amount}, ${remaining})"><i class='bx bx-money'></i> Pay</button>` :
-                '<span style="color:var(--text-muted);font-size:12px">✓ Settled</span>'}</td>
+            <td>
+                ${!p.is_paid ?
+                `<button class="btn btn-sm btn-success" style="margin-bottom:4px;width:100%" onclick="openSupplierPayModal('${p.id}', ${p.total_amount}, ${remaining})"><i class='bx bx-money'></i> Pay</button>` :
+                '<span style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:4px">✓ Settled</span>'}
+                <button class="btn btn-sm btn-outline" style="padding:2px 6px" onclick="editSupplierRecord('${p.id}')"><i class='bx bx-edit'></i></button>
+                <button class="btn btn-sm btn-danger" style="padding:2px 6px" onclick="deleteSupplierRecord('${p.id}')"><i class='bx bx-trash'></i></button>
+            </td>
         </tr>`}).join('');
     } catch(e) { console.error(e); }
 }
@@ -1205,6 +1211,78 @@ document.getElementById('btn-submit-sup-pay')?.addEventListener('click', async (
         if (!res.ok) throw new Error('Failed to submit payment');
         toast('Payment submitted successfully');
         closeModal('modal-supplier-pay');
+        loadSupplierPayments();
+    } catch(e) { toast(e.message, 'error'); }
+});
+
+document.getElementById('btn-add-sup-payment')?.addEventListener('click', () => {
+    document.getElementById('supplier-record-form').reset();
+    document.getElementById('sup-rec-id').value = '';
+    document.getElementById('sup-record-title').innerHTML = "<i class='bx bx-list-plus' style='color:var(--primary)'></i> Add Supplier Record";
+    
+    // Populate datalist with unique supplier names
+    const names = [...new Set(suppliers.map(s => s.name))];
+    const dl = document.getElementById('sup-rec-supplier-list');
+    if (dl) dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+    
+    openModal('modal-supplier-record');
+});
+
+window.editSupplierRecord = function(id) {
+    const p = supplierPaymentsList.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('sup-rec-id').value = id;
+    document.getElementById('sup-rec-supplier').value = p.supplier_name || '';
+    document.getElementById('sup-rec-product').value = p.product_name || '';
+    document.getElementById('sup-rec-qty').value = p.quantity || 1;
+    document.getElementById('sup-rec-cost').value = p.cost_price || 0;
+    document.getElementById('sup-rec-total').value = p.total_amount || 0;
+    document.getElementById('sup-rec-paid').value = p.paid_amount || 0;
+    document.getElementById('sup-rec-notes').value = p.notes || '';
+    
+    const names = [...new Set(suppliers.map(s => s.name))];
+    const dl = document.getElementById('sup-rec-supplier-list');
+    if (dl) dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+    
+    document.getElementById('sup-record-title').innerHTML = "<i class='bx bx-edit' style='color:var(--primary)'></i> Edit Supplier Record";
+    openModal('modal-supplier-record');
+};
+
+window.deleteSupplierRecord = async function(id) {
+    if (!confirm('Are you sure you want to delete this payment record? This action cannot be undone.')) return;
+    try {
+        const res = await api(`/suppliers/payments/${id}`, { method: 'DELETE' });
+        if (!res) return;
+        if (!res.ok) throw new Error('Failed to delete payment record');
+        toast('Record deleted successfully');
+        loadSupplierPayments();
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+document.getElementById('btn-save-sup-record')?.addEventListener('click', async () => {
+    const id = document.getElementById('sup-rec-id').value;
+    const payload = {
+        supplier_name: document.getElementById('sup-rec-supplier').value.trim(),
+        product_name: document.getElementById('sup-rec-product').value.trim(),
+        quantity: parseInt(document.getElementById('sup-rec-qty').value) || 1,
+        cost_price: parseFloat(document.getElementById('sup-rec-cost').value) || 0,
+        total_amount: parseFloat(document.getElementById('sup-rec-total').value) || 0,
+        paid_amount: parseFloat(document.getElementById('sup-rec-paid').value) || 0,
+        notes: document.getElementById('sup-rec-notes').value.trim()
+    };
+    
+    if (!payload.supplier_name) return toast('Supplier Name is required', 'error');
+    if (isNaN(payload.total_amount)) return toast('Total Amount is required', 'error');
+    
+    try {
+        const res = await api(id ? `/suppliers/payments/${id}` : '/suppliers/payments', {
+            method: id ? 'PUT' : 'POST',
+            body: JSON.stringify(payload)
+        });
+        if (!res) return;
+        if (!res.ok) throw new Error('Failed to save record');
+        toast(id ? 'Record updated' : 'Record added successfully');
+        closeModal('modal-supplier-record');
         loadSupplierPayments();
     } catch(e) { toast(e.message, 'error'); }
 });
