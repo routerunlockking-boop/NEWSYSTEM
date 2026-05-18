@@ -545,3 +545,52 @@ body.dark-mode ::-webkit-scrollbar-thumb { background:#475569; }
  # v o u c h e r - d i s c o u n t - r o w   {   f o n t - w e i g h t :   6 0 0 ;   f o n t - s i z e :   1 3 p x ;   } 
  . v o u c h e r - r o w   i n p u t : f o c u s   {   b o r d e r - c o l o r :   v a r ( - - p r i m a r y ) ;   }  
  
+/* Admin Notification Blinking Red Dot */
+.notify-dot {
+    width: 10px; height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: middle;
+    animation: notifyBlink 1s infinite;
+    box-shadow: 0 0 6px rgba(239,68,68,0.6);
+}
+@keyframes notifyBlink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(239,68,68,0.6); }
+    50% { opacity: 0.3; box-shadow: 0 0 2px rgba(239,68,68,0.2); }
+}
+
+/* Customer Search Dropdown */
+.customer-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 100;
+    max-height: 260px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+.cust-search-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+.cust-search-item:hover {
+    background: rgba(59, 130, 246, 0.08);
+}
+.cust-search-item:last-child { border-bottom: none; }
+
+/* Supplier Payments Summary */
+#sup-payment-summary > div {
+    padding: 4px 12px;
+    background: var(--bg-soft);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
