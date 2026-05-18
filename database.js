@@ -81,7 +81,8 @@ const ProductSchema = new mongoose.Schema({
     is_imei_tracked: { type: Boolean, default: false },
     warranty_months: { type: Number, default: 0 },
     image: { type: String },
-    supplier: { type: String, default: '' }
+    supplier: { type: String, default: '' },
+    is_supplier_paid: { type: Boolean, default: false }
 });
 
 // Status history entry for IMEI items

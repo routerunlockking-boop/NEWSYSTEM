@@ -101,7 +101,8 @@ function setupProductModal() {
             is_imei_tracked: document.getElementById('prod-imei-tracked').checked,
             warranty_months: parseInt(document.getElementById('prod-warranty').value)||12,
             barcode: document.getElementById('prod-barcode').value,
-            supplier: document.getElementById('prod-supplier').value || ''
+            supplier: document.getElementById('prod-supplier').value || '',
+            is_supplier_paid: document.getElementById('prod-supplier-paid').checked
         };
         if (!data.is_imei_tracked) {
             data.quantity = parseInt(document.getElementById('prod-qty').value)||0;
@@ -138,6 +139,7 @@ async function editProduct(id) {
     document.getElementById('prod-barcode').value = p.barcode;
     document.getElementById('prod-imei-tracked').checked = p.is_imei_tracked;
     document.getElementById('prod-warranty').value = p.warranty_months || 12;
+    document.getElementById('prod-supplier-paid').checked = p.is_supplier_paid || false;
     document.getElementById('prod-normal-fields').style.display = p.is_imei_tracked ? 'none' : 'block';
     document.getElementById('prod-imei-fields').style.display = p.is_imei_tracked ? 'block' : 'none';
     document.getElementById('product-modal-title').textContent = 'Edit Product';

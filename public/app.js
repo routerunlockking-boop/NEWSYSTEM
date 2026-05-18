@@ -1257,3 +1257,32 @@ window.selectCustomerFromSearch = function(id) {
     }
     toast(`Customer selected: ${c.name}`);
 };
+
+window.saveCustomerFromPOS = async function() {
+    const name = document.getElementById('pos-cust-name').value.trim();
+    const phone = document.getElementById('pos-cust-phone').value.trim();
+    if (!name || !phone) return toast('Name and Phone are required to save', 'error');
+    
+    // Check if already exists
+    const existing = customers.find(c => c.phone === phone);
+    if (existing) return toast('Customer with this phone already exists', 'error');
+    
+    const payload = {
+        name, phone,
+        nic_number: document.getElementById('pos-cust-nic').value.trim(),
+        email: document.getElementById('pos-cust-email').value.trim(),
+        address: document.getElementById('pos-cust-address').value.trim()
+    };
+    
+    try {
+        const res = await api('/customers', { method: 'POST', body: JSON.stringify(payload) });
+        if (res && res.ok) {
+            toast('Customer saved successfully');
+            loadCustomers();
+        } else {
+            toast('Failed to save customer', 'error');
+        }
+    } catch(e) {
+        toast('Error saving customer', 'error');
+    }
+};

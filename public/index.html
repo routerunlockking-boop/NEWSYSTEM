@@ -149,6 +149,7 @@
                                 <select id="pos-cust-select" class="form-control" style="display:none">
                                     <option value="">+ New Customer</option>
                                 </select>
+                                <button class="btn btn-sm btn-outline" onclick="saveCustomerFromPOS()" title="Save Customer"><i class='bx bx-save'></i> Save</button>
                                 <button class="btn-ghost" id="btn-hide-customer" title="Hide Customer" style="font-size:18px;color:var(--text-muted)"><i class='bx bx-x'></i></button>
                             </div>
                         </div>
@@ -424,6 +425,7 @@
     <div class="form-row"><div class="form-group"><label>Cost Price</label><input type="number" id="prod-cost" class="form-control" step="0.01" value="0"></div>
         <div class="form-group"><label>Selling Price *</label><input type="number" id="prod-price" class="form-control" step="0.01" required></div></div>
     <div class="form-row"><div class="form-group"><label>Supplier</label><select id="prod-supplier" class="form-control"><option value="">-- No Supplier --</option></select></div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:10px;"><label style="margin:0"><input type="checkbox" id="prod-supplier-paid" style="margin-right:8px"> <strong>Paid to Supplier?</strong></label></div>
         <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:10px;"><label style="margin:0"><input type="checkbox" id="prod-imei-tracked" style="margin-right:8px"> <strong>IMEI/Serial Number Tracked</strong></label></div></div>
     <div id="prod-normal-fields">
         <div class="form-group"><label>Quantity</label><input type="number" id="prod-qty" class="form-control" value="0"></div>

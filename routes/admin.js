@@ -9,7 +9,7 @@ const adminOnly = (req, res, next) => {
 
 router.get('/users', adminOnly, async (req, res) => {
     try {
-        const users = await User.find({ role: { $ne: 'admin' } });
+        const users = await User.find({});
         res.json(users.map(u => ({
             id: u._id.toString(), email: u.email, business_name: u.business_name,
             whatsapp_number: u.whatsapp_number || '', role: u.role,

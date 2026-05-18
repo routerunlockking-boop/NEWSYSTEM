@@ -225,7 +225,8 @@ router.post('/', async (req, res) => {
                     total_amount: fItem.cost_price * fItem.quantity,
                     selling_price: fItem.price,
                     sale_date: date,
-                    is_paid: false
+                    is_paid: product.is_supplier_paid || false,
+                    paid_date: product.is_supplier_paid ? date : null
                 });
             }
         }
