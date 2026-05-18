@@ -161,24 +161,6 @@ router.post('/', async (req, res) => {
         // Synchronize product quantity
         await syncProductStock(product_id);
 
-        if (product.supplier && results.length > 0) {
-            const { SupplierPayment } = require('../database');
-            const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-            const cPrice = purchase_price || product.cost_price || 0;
-            await SupplierPayment.create({
-                user_id: req.user._id,
-                supplier_name: product.supplier,
-                product_name: product.name,
-                quantity: results.length,
-                cost_price: cPrice,
-                total_amount: cPrice * results.length,
-                sale_date: today,
-                is_paid: product.is_supplier_paid || false,
-                paid_date: product.is_supplier_paid ? today : null,
-                notes: 'IMEI Stock Received'
-            });
-        }
-
         res.status(201).json({
             message: `${results.length} items added successfully`,
             added: results.length,

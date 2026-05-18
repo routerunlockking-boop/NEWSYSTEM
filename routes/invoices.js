@@ -211,6 +211,28 @@ router.post('/', async (req, res) => {
 
 
 
+        // Create supplier payment records for products with suppliers
+        const { SupplierPayment } = require('../database');
+        for (const fItem of formattedItems) {
+            const product = await Product.findOne({ name: fItem.product_name, user_id: req.user._id });
+            if (product && product.supplier) {
+                await SupplierPayment.create({
+                    user_id: req.user._id,
+                    supplier_name: product.supplier,
+                    invoice_id: invoice._id,
+                    invoice_number: invoice_number,
+                    product_name: fItem.product_name,
+                    quantity: fItem.quantity,
+                    cost_price: fItem.cost_price,
+                    total_amount: fItem.cost_price * fItem.quantity,
+                    selling_price: fItem.price,
+                    sale_date: date,
+                    is_paid: product.is_supplier_paid || false,
+                    paid_date: product.is_supplier_paid ? date : null
+                });
+            }
+        }
+
         res.status(201).json({
             message: 'Invoice created successfully',
             invoice: {
