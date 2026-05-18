@@ -112,6 +112,25 @@ router.post('/', async (req, res) => {
             image, supplier: supplier || '',
             is_supplier_paid: is_supplier_paid || false
         });
+
+        // Create supplier payment if supplier is selected and it's a non-IMEI product with quantity
+        if (product.supplier && !is_imei_tracked && product.quantity > 0) {
+            const { SupplierPayment } = require('../database');
+            const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            await SupplierPayment.create({
+                user_id: req.user._id,
+                supplier_name: product.supplier,
+                product_name: product.name,
+                quantity: product.quantity,
+                cost_price: product.cost_price,
+                total_amount: product.cost_price * product.quantity,
+                sale_date: today, // Using today as the purchase/creation date
+                is_paid: product.is_supplier_paid || false,
+                paid_date: product.is_supplier_paid ? today : null,
+                notes: 'Stock Added'
+            });
+        }
+
         res.status(201).json({
             id: product._id.toString(), name, barcode: product.barcode,
             category: product.category,
