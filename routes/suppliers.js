@@ -88,6 +88,7 @@ router.get('/payments', async (req, res) => {
             quantity: p.quantity,
             cost_price: p.cost_price,
             total_amount: p.total_amount,
+            paid_amount: p.paid_amount || 0,
             selling_price: p.selling_price,
             sale_date: p.sale_date,
             is_paid: p.is_paid,
@@ -101,12 +102,27 @@ router.get('/payments', async (req, res) => {
 
 router.put('/payments/:id/pay', async (req, res) => {
     try {
-        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const payment = await SupplierPayment.findByIdAndUpdate(req.params.id, {
-            is_paid: true, paid_date: today, notes: req.body.notes || ''
-        }, { new: true });
+        const payment = await SupplierPayment.findById(req.params.id);
         if (!payment) return res.status(404).json({ error: 'Payment not found' });
-        res.json({ message: 'Payment marked as paid' });
+        
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        
+        let newPaid = payment.paid_amount;
+        if (req.body.amount !== undefined) {
+            newPaid += parseFloat(req.body.amount) || 0;
+        } else {
+            newPaid = payment.total_amount; // fallback to full payment
+        }
+        
+        payment.paid_amount = newPaid;
+        if (payment.paid_amount >= payment.total_amount) {
+            payment.is_paid = true;
+            payment.paid_date = today;
+        }
+        if (req.body.notes) payment.notes = req.body.notes;
+        
+        await payment.save();
+        res.json({ message: 'Payment updated', payment });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

@@ -1134,15 +1134,14 @@ async function loadSupplierPayments() {
         const payments = await res.json();
 
         // Summary
-        const totalOwed = payments.filter(p => !p.is_paid).reduce((s, p) => s + p.total_amount, 0);
-        const totalPaid = payments.filter(p => p.is_paid).reduce((s, p) => s + p.total_amount, 0);
+        const totalOwed = payments.filter(p => !p.is_paid).reduce((s, p) => s + (p.total_amount - (p.paid_amount || 0)), 0);
+        const totalPaid = payments.reduce((s, p) => s + (p.paid_amount || 0), 0);
         const unpaidCount = payments.filter(p => !p.is_paid).length;
         const summaryEl = document.getElementById('sup-payment-summary');
         if (summaryEl) {
             summaryEl.innerHTML = `
-                <div><strong style="color:var(--danger)">Unpaid:</strong> Rs. ${totalOwed.toLocaleString()} (${unpaidCount} items)</div>
-                <div><strong style="color:var(--success)">Paid:</strong> Rs. ${totalPaid.toLocaleString()}</div>
-                <div><strong>Total:</strong> Rs. ${(totalOwed + totalPaid).toLocaleString()}</div>
+                <div><strong style="color:var(--danger)">Remaining Balance:</strong> Rs. ${totalOwed.toLocaleString()} (${unpaidCount} items)</div>
+                <div><strong style="color:var(--success)">Total Paid:</strong> Rs. ${totalPaid.toLocaleString()}</div>
             `;
         }
 
@@ -1152,34 +1151,63 @@ async function loadSupplierPayments() {
             tb.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)"><i class="bx bx-receipt" style="font-size:24px;display:block;margin-bottom:8px"></i>No supplier payments found</td></tr>';
             return;
         }
-        tb.innerHTML = payments.map(p => `<tr style="${!p.is_paid ? 'background:rgba(239,68,68,0.04)' : ''}">
+        tb.innerHTML = payments.map(p => {
+            const paid = p.paid_amount || 0;
+            const remaining = p.total_amount - paid;
+            return `<tr style="${!p.is_paid ? 'background:rgba(239,68,68,0.04)' : ''}">
             <td><strong>${p.supplier_name}</strong></td>
             <td>${p.product_name}</td>
             <td>${p.quantity}</td>
             <td>Rs. ${p.cost_price.toLocaleString()}</td>
-            <td><strong style="color:${p.is_paid ? 'var(--success)' : 'var(--danger)'}">Rs. ${p.total_amount.toLocaleString()}</strong></td>
+            <td>
+                <div>Total: Rs. ${p.total_amount.toLocaleString()}</div>
+                <div style="font-size:11px;color:var(--success)">Paid: Rs. ${paid.toLocaleString()}</div>
+                ${remaining > 0 ? 
+                    `<strong style="color:var(--danger)">Rem: Rs. ${remaining.toLocaleString()}</strong>` : 
+                 remaining < 0 ? 
+                    `<strong style="color:var(--primary)">Supplier Owes: Rs. ${Math.abs(remaining).toLocaleString()}</strong>` :
+                    `<strong style="color:var(--success)">Cleared</strong>`}
+            </td>
             <td>${p.sale_date || '-'}</td>
             <td><code style="font-size:11px">${p.invoice_number || '-'}</code></td>
             <td>${p.is_paid ?
                 `<span class="badge badge-green">Paid</span><br><small style="color:var(--text-muted)">${p.paid_date}</small>` :
                 '<span class="badge badge-red">Unpaid</span>'}</td>
             <td>${!p.is_paid ?
-                `<button class="btn btn-sm btn-success" onclick="markSupplierPaid('${p.id}')"><i class='bx bx-check'></i> Pay</button>` :
-                '<span style="color:var(--text-muted);font-size:12px">✓</span>'}</td>
-        </tr>`).join('');
+                `<button class="btn btn-sm btn-success" onclick="openSupplierPayModal('${p.id}', ${p.total_amount}, ${remaining})"><i class='bx bx-money'></i> Pay</button>` :
+                '<span style="color:var(--text-muted);font-size:12px">✓ Settled</span>'}</td>
+        </tr>`}).join('');
     } catch(e) { console.error(e); }
 }
 
-window.markSupplierPaid = async function(id) {
-    if (!confirm('Mark this payment as paid?')) return;
+window.openSupplierPayModal = function(id, total, rem) {
+    document.getElementById('sup-pay-id').value = id;
+    document.getElementById('sup-pay-total').value = 'Rs. ' + parseFloat(total).toLocaleString();
+    document.getElementById('sup-pay-rem').value = 'Rs. ' + parseFloat(rem).toLocaleString();
+    document.getElementById('sup-pay-amount').value = rem;
+    document.getElementById('sup-pay-notes').value = '';
+    openModal('modal-supplier-pay');
+};
+
+document.getElementById('btn-submit-sup-pay')?.addEventListener('click', async () => {
+    const id = document.getElementById('sup-pay-id').value;
+    const amount = parseFloat(document.getElementById('sup-pay-amount').value);
+    const notes = document.getElementById('sup-pay-notes').value.trim();
+    
+    if (isNaN(amount) || amount <= 0) return toast('Please enter a valid amount', 'error');
+    
     try {
-        const res = await api(`/suppliers/payments/${id}/pay`, { method: 'PUT', body: JSON.stringify({ notes: 'Paid' }) });
+        const res = await api(`/suppliers/payments/${id}/pay`, { 
+            method: 'PUT', 
+            body: JSON.stringify({ amount, notes }) 
+        });
         if (!res) return;
-        if (!res.ok) throw new Error('Failed to update');
-        toast('Payment marked as paid');
+        if (!res.ok) throw new Error('Failed to submit payment');
+        toast('Payment submitted successfully');
+        closeModal('modal-supplier-pay');
         loadSupplierPayments();
     } catch(e) { toast(e.message, 'error'); }
-};
+});
 
 // === ADMIN PENDING REGISTRATION NOTIFICATION ===
 async function checkPendingRegistrations() {

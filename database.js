@@ -201,6 +201,7 @@ const SupplierPaymentSchema = new mongoose.Schema({
     quantity: { type: Number, default: 1 },
     cost_price: { type: Number, default: 0 },
     total_amount: { type: Number, default: 0 },
+    paid_amount: { type: Number, default: 0 },
     selling_price: { type: Number, default: 0 },
     sale_date: { type: String, default: '' },
     is_paid: { type: Boolean, default: false },
