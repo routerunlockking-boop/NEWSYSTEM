@@ -419,6 +419,16 @@ async function loadSuppliers() {
                 suppliers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
             if (currentVal && suppliers.some(s => s.name === currentVal)) prodSup.value = currentVal;
         }
+
+        // Populate supplier payment filter dropdown
+        const supPayFilter = document.getElementById('sup-payment-supplier-filter');
+        if (supPayFilter) {
+            supPayFilter.innerHTML = '<option value="">All Suppliers</option>' +
+                suppliers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+
+        // Load supplier payments
+        loadSupplierPayments();
     } catch(e) { console.error(e); }
 }
 
@@ -450,6 +460,10 @@ function setupSupplierModal() {
             closeModal('modal-supplier'); loadSuppliers();
         } catch(e) { toast(e.message, 'error'); }
     };
+
+    // Supplier payment filters
+    document.getElementById('sup-payment-filter').onchange = loadSupplierPayments;
+    document.getElementById('sup-payment-supplier-filter').onchange = loadSupplierPayments;
 }
 
 async function editSupplier(id) {
@@ -812,15 +826,16 @@ async function loadBarcodePrinter() {
         const tb = document.querySelector('#barcode-print-table tbody');
         if (tb) {
             if (filtered.length === 0) {
-                tb.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">No products found</td></tr>';
+                tb.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">No products found</td></tr>';
                 return;
             }
             tb.innerHTML = filtered.map(p => `
-                <tr onclick="addToPrintQueue('${p.name.replace(/'/g, "\\'")}', '${p.barcode||''}', ${p.price})" style="cursor:pointer">
+                <tr style="cursor:pointer">
                     <td><strong>${p.name}</strong></td>
                     <td><code style="background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-size:12px">${p.barcode || '<span style="color:var(--danger)">No Barcode</span>'}</code></td>
+                    <td><input type="number" class="form-control" data-bc-id="${p.id}" value="${document.getElementById('barcode-copies').value || 10}" min="1" style="width:60px;padding:4px;font-size:12px" onclick="event.stopPropagation()"></td>
                     <td style="text-align:right">
-                        <button class="btn btn-sm btn-outline">
+                        <button class="btn btn-sm btn-outline" onclick="addToPrintQueue('${p.name.replace(/'/g, "\\'")}', '${p.barcode||''}', ${p.price}, this.closest('tr').querySelector('[data-bc-id]').value)">
                             <i class='bx bx-plus'></i> Add
                         </button>
                     </td>
@@ -829,16 +844,17 @@ async function loadBarcodePrinter() {
     } catch(e) { console.error(e); }
 }
 
-window.addToPrintQueue = function(name, barcode, price) {
-    if (!barcode) return toast('This product has no barcode. Please edit it first.', 'error');
+window.addToPrintQueue = function(name, barcode, price, customQty) {
+    if (!barcode || !barcode.trim()) return toast('This product has no barcode. Please edit it first.', 'error');
+    barcode = barcode.trim();
     const existing = printQueue.find(item => item.barcode === barcode);
-    const qty = parseInt(document.getElementById('barcode-copies').value) || 10;
+    const qty = parseInt(customQty) || parseInt(document.getElementById('barcode-copies').value) || 10;
     if (existing) {
         existing.qty += qty;
     } else {
         printQueue.push({ name, barcode, price, qty });
     }
-    toast(`Added ${name} to queue`);
+    toast(`Added ${name} (${qty} copies) to queue`);
     renderPrintQueue();
 };
 
@@ -977,7 +993,7 @@ function setupAll() {
     initTheme(); checkAuth(); updateClock(); setInterval(updateClock, 1000);
     setupNav(); setupProductModal(); setupImeiModal(); setupCustomerModal(); setupSupplierModal(); setupDesigner();
     setupPOS(); setupWarranty(); setupSLT(); setupStatusModal(); setupInvoiceFilters(); setupReportTabs();
-    setupBarcodePrinter(); setupVoucherModal();
+    setupBarcodePrinter(); setupVoucherModal(); setupCustomerSearch();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -986,6 +1002,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-scan-mode').onclick = toggleScanMode;
     // Admin edit save button
     document.getElementById('btn-save-admin-edit').onclick = saveAdminEdit;
+
+    // Check for pending registrations (admin notification)
+    checkPendingRegistrations();
+    setInterval(checkPendingRegistrations, 30000); // Check every 30s
     // Clear bill button
     document.getElementById('btn-clear-bill').onclick = () => {
         if (currentBill.length && !confirm('Clear the current bill?')) return;
@@ -1098,4 +1118,142 @@ window.deleteVoucher = async function(id) {
         toast('Voucher deleted');
         loadVouchers();
     } catch (e) { toast(e.message, 'error'); }
+};
+
+// === SUPPLIER PAYMENTS ===
+async function loadSupplierPayments() {
+    try {
+        const statusFilter = document.getElementById('sup-payment-filter')?.value || '';
+        const supplierFilter = document.getElementById('sup-payment-supplier-filter')?.value || '';
+        let url = '/suppliers/payments?';
+        if (statusFilter) url += `status=${statusFilter}&`;
+        if (supplierFilter) url += `supplier=${encodeURIComponent(supplierFilter)}&`;
+        url += `_t=${Date.now()}`;
+        const res = await api(url);
+        if (!res) return;
+        const payments = await res.json();
+
+        // Summary
+        const totalOwed = payments.filter(p => !p.is_paid).reduce((s, p) => s + p.total_amount, 0);
+        const totalPaid = payments.filter(p => p.is_paid).reduce((s, p) => s + p.total_amount, 0);
+        const unpaidCount = payments.filter(p => !p.is_paid).length;
+        const summaryEl = document.getElementById('sup-payment-summary');
+        if (summaryEl) {
+            summaryEl.innerHTML = `
+                <div><strong style="color:var(--danger)">Unpaid:</strong> Rs. ${totalOwed.toLocaleString()} (${unpaidCount} items)</div>
+                <div><strong style="color:var(--success)">Paid:</strong> Rs. ${totalPaid.toLocaleString()}</div>
+                <div><strong>Total:</strong> Rs. ${(totalOwed + totalPaid).toLocaleString()}</div>
+            `;
+        }
+
+        const tb = document.querySelector('#sup-payments-table tbody');
+        if (!tb) return;
+        if (payments.length === 0) {
+            tb.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)"><i class="bx bx-receipt" style="font-size:24px;display:block;margin-bottom:8px"></i>No supplier payments found</td></tr>';
+            return;
+        }
+        tb.innerHTML = payments.map(p => `<tr style="${!p.is_paid ? 'background:rgba(239,68,68,0.04)' : ''}">
+            <td><strong>${p.supplier_name}</strong></td>
+            <td>${p.product_name}</td>
+            <td>${p.quantity}</td>
+            <td>Rs. ${p.cost_price.toLocaleString()}</td>
+            <td><strong style="color:${p.is_paid ? 'var(--success)' : 'var(--danger)'}">Rs. ${p.total_amount.toLocaleString()}</strong></td>
+            <td>${p.sale_date || '-'}</td>
+            <td><code style="font-size:11px">${p.invoice_number || '-'}</code></td>
+            <td>${p.is_paid ?
+                `<span class="badge badge-green">Paid</span><br><small style="color:var(--text-muted)">${p.paid_date}</small>` :
+                '<span class="badge badge-red">Unpaid</span>'}</td>
+            <td>${!p.is_paid ?
+                `<button class="btn btn-sm btn-success" onclick="markSupplierPaid('${p.id}')"><i class='bx bx-check'></i> Pay</button>` :
+                '<span style="color:var(--text-muted);font-size:12px">✓</span>'}</td>
+        </tr>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+window.markSupplierPaid = async function(id) {
+    if (!confirm('Mark this payment as paid?')) return;
+    try {
+        const res = await api(`/suppliers/payments/${id}/pay`, { method: 'PUT', body: JSON.stringify({ notes: 'Paid' }) });
+        if (!res) return;
+        if (!res.ok) throw new Error('Failed to update');
+        toast('Payment marked as paid');
+        loadSupplierPayments();
+    } catch(e) { toast(e.message, 'error'); }
+};
+
+// === ADMIN PENDING REGISTRATION NOTIFICATION ===
+async function checkPendingRegistrations() {
+    if (role !== 'admin') return;
+    try {
+        const res = await api('/admin/pending-count');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+        const dot = document.getElementById('admin-notify-dot');
+        if (dot) {
+            if (data.count > 0) {
+                dot.style.display = 'inline-block';
+                dot.title = `${data.count} pending registration(s)`;
+            } else {
+                dot.style.display = 'none';
+            }
+        }
+    } catch(e) { /* silent */ }
+}
+
+// === CUSTOMER SEARCH IN POS ===
+function setupCustomerSearch() {
+    const searchInput = document.getElementById('pos-cust-search');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        const resultsDiv = document.getElementById('pos-cust-search-results');
+        if (!q || q.length < 2) { resultsDiv.style.display = 'none'; return; }
+
+        const filtered = customers.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.phone.includes(q) ||
+            (c.nic_number && c.nic_number.toLowerCase().includes(q))
+        ).slice(0, 8);
+
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:13px">No customers found</div>';
+        } else {
+            resultsDiv.innerHTML = filtered.map(c => `
+                <div class="cust-search-item" onclick="selectCustomerFromSearch('${c.id}')">
+                    <div style="font-weight:600">${c.name}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">${c.phone} ${c.nic_number ? '• NIC: ' + c.nic_number : ''}</div>
+                </div>
+            `).join('');
+        }
+        resultsDiv.style.display = 'block';
+    });
+
+    // Close on click outside
+    document.addEventListener('click', function(e) {
+        const resultsDiv = document.getElementById('pos-cust-search-results');
+        if (resultsDiv && !e.target.closest('#pos-cust-search') && !e.target.closest('#pos-cust-search-results')) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+}
+
+window.selectCustomerFromSearch = function(id) {
+    const c = customers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('pos-cust-name').value = c.name;
+    document.getElementById('pos-cust-phone').value = c.phone;
+    document.getElementById('pos-cust-nic').value = c.nic_number || '';
+    document.getElementById('pos-cust-email').value = c.email || '';
+    document.getElementById('pos-cust-address').value = c.address || '';
+    document.getElementById('pos-cust-search').value = c.name;
+    document.getElementById('pos-cust-search-results').style.display = 'none';
+    // Also set the hidden select
+    const sel = document.getElementById('pos-cust-select');
+    if (sel) {
+        for (let opt of sel.options) {
+            if (opt.value === id) { sel.value = id; break; }
+        }
+    }
+    toast(`Customer selected: ${c.name}`);
 };

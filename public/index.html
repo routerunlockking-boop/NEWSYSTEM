@@ -64,7 +64,7 @@
         <li><a href="#" class="nav-link" data-target="slt-view" data-title="SLT Reports"><i class='bx bx-file'></i><span>SLT Reports</span></a></li>
         <li><a href="#" class="nav-link" data-target="reports-view" data-title="Reports"><i class='bx bx-bar-chart-alt-2'></i><span>Reports</span></a></li>
         <li class="nav-divider" id="nav-admin-divider" style="display:none"></li>
-        <li id="nav-admin-item" style="display:none"><a href="#" class="nav-link" data-target="admin-view" data-title="Admin"><i class='bx bx-cog'></i><span>Admin</span></a></li>
+        <li id="nav-admin-item" style="display:none"><a href="#" class="nav-link" data-target="admin-view" data-title="Admin"><i class='bx bx-cog'></i><span>Admin</span><span id="admin-notify-dot" class="notify-dot" style="display:none"></span></a></li>
     </ul>
 </aside>
 
@@ -146,11 +146,15 @@
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                             <h4 style="margin:0"><i class='bx bx-user'></i> Customer Details</h4>
                             <div style="display:flex;gap:6px;align-items:center">
-                                <select id="pos-cust-select" class="form-control" style="width:180px;font-size:12px;padding:4px 8px">
+                                <select id="pos-cust-select" class="form-control" style="display:none">
                                     <option value="">+ New Customer</option>
                                 </select>
                                 <button class="btn-ghost" id="btn-hide-customer" title="Hide Customer" style="font-size:18px;color:var(--text-muted)"><i class='bx bx-x'></i></button>
                             </div>
+                        </div>
+                        <div style="position:relative;margin-bottom:12px">
+                            <div class="search-input"><i class='bx bx-search'></i><input type="text" id="pos-cust-search" class="form-control" placeholder="Search customer by name, phone, NIC..." style="padding-left:38px" autocomplete="off"></div>
+                            <div id="pos-cust-search-results" class="customer-search-dropdown" style="display:none"></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label>Name *</label><input type="text" id="pos-cust-name" class="form-control" placeholder="Customer name"></div>
@@ -218,7 +222,7 @@
                 <div class="table-card" style="height:fit-content">
                     <div class="card-head"><h3>1. Search Products</h3></div>
                     <div class="table-responsive" style="max-height:400px">
-                        <table class="data-table" id="barcode-print-table"><thead><tr><th>Product</th><th>Barcode</th><th>Action</th></tr></thead><tbody></tbody></table>
+                        <table class="data-table" id="barcode-print-table"><thead><tr><th>Product</th><th>Barcode</th><th>Copies</th><th>Action</th></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
                 <div class="table-card" style="height:fit-content">
@@ -293,7 +297,7 @@
 
         <!-- SUPPLIERS -->
         <section id="suppliers-view" class="view">
-            <div class="view-head"><h2>Suppliers</h2>
+            <div class="view-head"><h2><i class='bx bx-truck' style="color:var(--primary)"></i> Suppliers</h2>
                 <div class="view-actions">
                     <input type="text" id="sup-search" class="form-control" placeholder="Search..." style="width:200px">
                     <button class="btn btn-primary" id="btn-add-supplier"><i class='bx bx-truck'></i> Add Supplier</button>
@@ -302,6 +306,27 @@
             <div class="table-card"><div class="table-responsive">
                 <table class="data-table" id="sup-table"><thead><tr><th>Name</th><th>Phone</th><th>NIC</th><th>Email</th><th>Address</th><th>Actions</th></tr></thead><tbody></tbody></table>
             </div></div>
+            <!-- Supplier Payments -->
+            <div class="table-card" style="margin-top:20px">
+                <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+                    <h3><i class='bx bx-money' style="color:var(--primary)"></i> Supplier Payments</h3>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="sup-payment-filter" class="form-control" style="width:140px;font-size:12px">
+                            <option value="">All</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option>
+                        </select>
+                        <select id="sup-payment-supplier-filter" class="form-control" style="width:160px;font-size:12px">
+                            <option value="">All Suppliers</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="sup-payment-summary" style="padding:10px 16px;display:flex;gap:20px;font-size:13px;border-bottom:1px solid var(--border);flex-wrap:wrap"></div>
+                <div class="table-responsive">
+                    <table class="data-table" id="sup-payments-table">
+                        <thead><tr><th>Supplier</th><th>Product</th><th>Qty</th><th>Cost</th><th>Total Owed</th><th>Sale Date</th><th>Invoice</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- INVOICES -->
@@ -594,7 +619,7 @@
         
     <div class="form-group"><label>Footer Message 1</label><input type="text" id="inv-set-msg1" class="form-control" placeholder="E.g. Thank You! Come Again"></div>
     <div class="form-group"><label>Footer Message 2 (Terms/Warranty)</label><textarea id="inv-set-msg2" class="form-control" rows="2" placeholder="E.g. Please keep this receipt for warranty claims..."></textarea></div>
-    <div class="form-group"><label>Powered By Text</label><input type="text" id="inv-set-powered" class="form-control" placeholder="E.g. Powered by SmartZone"></div>
+    <div class="form-group"><label>Powered By Text <small style="color:var(--danger);font-weight:600">🔒 Protected</small></label><input type="text" id="inv-set-powered" class="form-control" value="Powered by SmartZone" disabled readonly style="opacity:0.6;cursor:not-allowed;background:var(--bg-soft)"></div>
 </form></div>
 <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-invoice-settings')">Cancel</button><button class="btn btn-primary" id="btn-save-invoice-settings"><i class='bx bx-check'></i> Save Settings</button></div>
 </div></div>

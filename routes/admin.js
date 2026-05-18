@@ -50,4 +50,13 @@ router.delete('/users/:id', adminOnly, async (req, res) => {
     }
 });
 
+router.get('/pending-count', adminOnly, async (req, res) => {
+    try {
+        const count = await User.countDocuments({ is_active: false, role: { $ne: 'admin' } });
+        res.json({ count });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

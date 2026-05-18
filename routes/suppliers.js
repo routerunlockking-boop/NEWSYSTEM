@@ -69,4 +69,47 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// === SUPPLIER PAYMENTS ===
+const { SupplierPayment } = require('../database');
+
+router.get('/payments', async (req, res) => {
+    try {
+        const qf = req.user.role === 'admin' ? {} : { user_id: req.user._id };
+        const { supplier, status } = req.query;
+        if (supplier) qf.supplier_name = supplier;
+        if (status === 'paid') qf.is_paid = true;
+        else if (status === 'unpaid') qf.is_paid = false;
+        const payments = await SupplierPayment.find(qf).sort({ sale_date: -1 });
+        res.json(payments.map(p => ({
+            id: p._id.toString(),
+            supplier_name: p.supplier_name,
+            invoice_number: p.invoice_number || '',
+            product_name: p.product_name,
+            quantity: p.quantity,
+            cost_price: p.cost_price,
+            total_amount: p.total_amount,
+            selling_price: p.selling_price,
+            sale_date: p.sale_date,
+            is_paid: p.is_paid,
+            paid_date: p.paid_date || '',
+            notes: p.notes || ''
+        })));
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/payments/:id/pay', async (req, res) => {
+    try {
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const payment = await SupplierPayment.findByIdAndUpdate(req.params.id, {
+            is_paid: true, paid_date: today, notes: req.body.notes || ''
+        }, { new: true });
+        if (!payment) return res.status(404).json({ error: 'Payment not found' });
+        res.json({ message: 'Payment marked as paid' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

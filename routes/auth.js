@@ -88,7 +88,9 @@ router.put('/profile', async (req, res) => {
         if (whatsapp_number !== undefined) user.whatsapp_number = whatsapp_number;
         if (password && password.trim()) user.password = password;
         if (invoice_settings) {
-            user.invoice_settings = { ...user.invoice_settings, ...invoice_settings };
+            const protectedSettings = { ...invoice_settings };
+            delete protectedSettings.footer_powered_by; // Cannot be changed by anyone
+            user.invoice_settings = { ...user.invoice_settings, ...protectedSettings };
         }
         if (invoice_templates) {
             user.invoice_templates = invoice_templates;
