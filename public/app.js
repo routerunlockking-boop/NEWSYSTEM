@@ -1379,7 +1379,12 @@ window.printSupplierReceipt = function(p, paidNow = 0, paidImeisNow = []) {
         </div>
     `;
     
-    window.print();
+    pa.style.display = 'block';
+    
+    setTimeout(() => { 
+        window.print(); 
+        pa.style.display = 'none'; 
+    }, 300);
 };
 
 document.getElementById('btn-add-sup-payment')?.addEventListener('click', () => {
