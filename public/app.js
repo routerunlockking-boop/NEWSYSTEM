@@ -1302,8 +1302,8 @@ window.printSupplierReceipt = function(p, paidNow = 0, paidImeisNow = []) {
         paidImeisNow.forEach(imei => {
             imeiHtml += `<div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: ${imei}</div>`;
         });
-    } else if (p.is_imei_product && p.imei_numbers) {
-        p.imei_numbers.forEach(imei => {
+    } else if (p.is_imei_product && p.paid_imeis && p.paid_imeis.length > 0) {
+        p.paid_imeis.forEach(imei => {
             imeiHtml += `<div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: ${imei}</div>`;
         });
     }
