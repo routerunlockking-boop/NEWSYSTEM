@@ -464,6 +464,25 @@ function setupSupplierModal() {
     // Supplier payment filters
     document.getElementById('sup-payment-filter').onchange = loadSupplierPayments;
     document.getElementById('sup-payment-supplier-filter').onchange = loadSupplierPayments;
+
+    // Sync all inventory products with suppliers into payment records
+    document.getElementById('btn-sync-inventory')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-sync-inventory');
+        btn.disabled = true;
+        btn.innerHTML = "<i class='bx bx-loader bx-spin'></i> Syncing...";
+        try {
+            const res = await api('/suppliers/sync-inventory', { method: 'POST' });
+            if (!res) return;
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast(d.message);
+            loadSupplierPayments();
+        } catch(e) { toast(e.message, 'error'); }
+        finally {
+            btn.disabled = false;
+            btn.innerHTML = "<i class='bx bx-refresh'></i> Sync Inventory";
+        }
+    });
 }
 
 async function editSupplier(id) {
@@ -1156,7 +1175,8 @@ async function loadSupplierPayments() {
         tb.innerHTML = payments.map(p => {
             const paid = p.paid_amount || 0;
             const remaining = p.total_amount - paid;
-            return `<tr style="${!p.is_paid ? 'background:rgba(239,68,68,0.04)' : ''}">
+            const supplierOwes = remaining < 0; // supplier owes us money
+            return `<tr class="${supplierOwes ? 'supplier-owes-row' : (!p.is_paid ? '' : '')}" style="${(!supplierOwes && !p.is_paid) ? 'background:rgba(239,68,68,0.04)' : ''}">
             <td><strong>${p.supplier_name}</strong></td>
             <td>${p.product_name}</td>
             <td>${p.quantity}</td>
@@ -1167,7 +1187,7 @@ async function loadSupplierPayments() {
                 ${remaining > 0 ? 
                     `<strong style="color:var(--danger)">Rem: Rs. ${remaining.toLocaleString()}</strong>` : 
                  remaining < 0 ? 
-                    `<strong style="color:var(--primary)">Supplier Owes: Rs. ${Math.abs(remaining).toLocaleString()}</strong>` :
+                    `<strong style="color:#b91c1c">⚠ Supplier Owes: Rs. ${Math.abs(remaining).toLocaleString()}</strong>` :
                     `<strong style="color:var(--success)">Cleared</strong>`}
             </td>
             <td>${p.sale_date || '-'}</td>

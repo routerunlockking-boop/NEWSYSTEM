@@ -70,7 +70,44 @@ router.delete('/:id', async (req, res) => {
 });
 
 // === SUPPLIER PAYMENTS ===
-const { SupplierPayment } = require('../database');
+const { SupplierPayment, Product } = require('../database');
+
+// Sync all inventory products with a supplier into payment records
+router.post('/sync-inventory', async (req, res) => {
+    try {
+        const qf = req.user.role === 'admin' ? { supplier: { $ne: '' } } : { user_id: req.user._id, supplier: { $ne: '' } };
+        const productsWithSupplier = await Product.find(qf);
+        let created = 0;
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        for (const p of productsWithSupplier) {
+            if (!p.supplier) continue;
+            // Check if a payment record already exists for this product+supplier
+            const existing = await SupplierPayment.findOne({ supplier_name: p.supplier, product_name: p.name, user_id: req.user._id });
+            if (!existing) {
+                const qty = p.is_imei_tracked ? 1 : (p.quantity || 1);
+                const totalAmount = (p.cost_price || 0) * qty;
+                const paidAmount = p.is_supplier_paid ? totalAmount : 0;
+                await SupplierPayment.create({
+                    user_id: req.user._id,
+                    supplier_name: p.supplier,
+                    product_name: p.name,
+                    quantity: qty,
+                    cost_price: p.cost_price || 0,
+                    total_amount: totalAmount,
+                    paid_amount: paidAmount,
+                    is_paid: p.is_supplier_paid && totalAmount > 0,
+                    paid_date: (p.is_supplier_paid && totalAmount > 0) ? today : '',
+                    sale_date: today,
+                    notes: 'Auto-synced from inventory'
+                });
+                created++;
+            }
+        }
+        res.json({ message: `Synced. ${created} new record(s) created.`, created });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
 
 router.get('/payments', async (req, res) => {
     try {

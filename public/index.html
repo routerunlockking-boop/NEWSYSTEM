@@ -126,6 +126,7 @@
                         <div><h2>Current Bill</h2><p id="bill-no">Auto-generated</p></div>
                         <div style="display:flex;gap:6px;align-items:center">
                             <button class="btn btn-outline btn-sm" id="btn-toggle-customer" title="Add Customer"><i class='bx bx-user-plus'></i> Customer</button>
+                            <button class="btn btn-warning btn-sm" id="btn-hold-bill" title="Hold Bill"><i class='bx bx-pause'></i> Hold</button>
                             <button class="btn btn-outline btn-sm" id="btn-clear-bill" title="Clear Bill"><i class='bx bx-trash'></i> Clear</button>
                         </div>
                     </div>
@@ -141,13 +142,19 @@
                             <input type="text" id="pos-cashier-custom" class="form-control" style="font-size:12.5px;padding:6px 10px;flex:1;display:none" placeholder="Enter cashier name...">
                         </div>
                     </div>
+                    <!-- Held Bills Strip -->
+                    <div class="held-bills-bar" id="held-bills-bar" style="display:none">
+                        <i class='bx bx-pause-circle' style="color:var(--warning);font-size:16px"></i>
+                        <span style="font-size:11px;font-weight:700;color:#92400e">Held Bills:</span>
+                        <div id="held-bills-list" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+                    </div>
                     <!-- Customer box -->
                     <div class="customer-box" id="pos-customer-box" style="display:none">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                             <h4 style="margin:0"><i class='bx bx-user'></i> Customer Details</h4>
                             <div style="display:flex;gap:6px;align-items:center">
-                                <select id="pos-cust-select" class="form-control" style="display:none">
-                                    <option value="">+ New Customer</option>
+                                <select id="pos-cust-select" class="form-control" style="font-size:12px;padding:5px 8px;max-width:160px">
+                                    <option value="">+ New / Walk-in</option>
                                 </select>
                                 <button class="btn btn-sm btn-outline" onclick="saveCustomerFromPOS()" title="Save Customer"><i class='bx bx-save'></i> Save</button>
                                 <button class="btn-ghost" id="btn-hide-customer" title="Hide Customer" style="font-size:18px;color:var(--text-muted)"><i class='bx bx-x'></i></button>
@@ -312,6 +319,7 @@
                 <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
                     <h3><i class='bx bx-money' style="color:var(--primary)"></i> Supplier Payments</h3>
                     <div style="display:flex;gap:8px;align-items:center">
+                        <button class="btn btn-outline btn-sm" id="btn-sync-inventory" title="Sync all inventory products with suppliers into payments"><i class='bx bx-refresh'></i> Sync Inventory</button>
                         <button class="btn btn-primary btn-sm" id="btn-add-sup-payment"><i class='bx bx-plus'></i> Add Record</button>
                         <select id="sup-payment-filter" class="form-control" style="width:140px;font-size:12px">
                             <option value="">All</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option>

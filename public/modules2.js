@@ -140,8 +140,11 @@ function setupPOS() {
     document.getElementById('pos-paid').addEventListener('input', updateBillTotals);
     document.getElementById('btn-apply-voucher').addEventListener('click', applyVoucher);
     document.getElementById('btn-submit-bill').addEventListener('click', submitBill);
-    
-    // Handle customer selection in POS
+
+    // Hold Bill
+    document.getElementById('btn-hold-bill')?.addEventListener('click', holdBill);
+
+    // Handle customer selection in POS dropdown
     document.getElementById('pos-cust-select')?.addEventListener('change', function() {
         if (!this.value) {
             document.getElementById('pos-cust-name').value = '';
@@ -158,6 +161,9 @@ function setupPOS() {
             document.getElementById('pos-cust-nic').value = c.nic_number || '';
             document.getElementById('pos-cust-email').value = c.email || '';
             document.getElementById('pos-cust-address').value = c.address || '';
+            // Also update the search field
+            const searchEl = document.getElementById('pos-cust-search');
+            if (searchEl) searchEl.value = c.name;
         }
     });
 
@@ -190,7 +196,110 @@ function setupPOS() {
     loadCustomers();
     // Load cashiers for the dropdown
     loadCashiers();
+    // Show any held bills
+    renderHeldBills();
 }
+
+// ===== HOLD BILL =====
+function holdBill() {
+    if (!currentBill.length) return toast('No items in bill to hold', 'error');
+    const held = JSON.parse(localStorage.getItem('pos_held_bills') || '[]');
+    const label = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    held.push({
+        id: Date.now(),
+        label,
+        bill: JSON.parse(JSON.stringify(currentBill)),
+        imeiInBill: JSON.parse(JSON.stringify(imeiInBill)),
+        hasImeiInBill,
+        cashier: document.getElementById('pos-cashier-select').value,
+        cashierCustom: document.getElementById('pos-cashier-custom').value,
+        custName: document.getElementById('pos-cust-name').value,
+        custPhone: document.getElementById('pos-cust-phone').value,
+        custNic: document.getElementById('pos-cust-nic').value,
+        custEmail: document.getElementById('pos-cust-email').value,
+        custAddr: document.getElementById('pos-cust-address').value,
+        voucherCode,
+        voucherDiscount,
+        amountPaid: document.getElementById('pos-paid').value
+    });
+    localStorage.setItem('pos_held_bills', JSON.stringify(held));
+    // Clear current bill
+    currentBill = []; imeiInBill = []; hasImeiInBill = false;
+    voucherCode = ''; voucherDiscount = 0;
+    document.getElementById('pos-paid').value = '';
+    document.getElementById('pos-voucher').value = '';
+    document.getElementById('pos-cust-name').value = '';
+    document.getElementById('pos-cust-phone').value = '';
+    document.getElementById('pos-cust-nic').value = '';
+    document.getElementById('pos-cust-email').value = '';
+    document.getElementById('pos-cust-address').value = '';
+    document.getElementById('pos-cust-search').value = '';
+    document.getElementById('pos-cust-select').value = '';
+    document.getElementById('pos-customer-box').style.display = 'none';
+    document.getElementById('voucher-discount-row').style.display = 'none';
+    const custBtn = document.getElementById('btn-toggle-customer');
+    custBtn.classList.remove('btn-primary'); custBtn.classList.add('btn-outline');
+    renderBill();
+    renderHeldBills();
+    toast(`Bill held at ${label}. You can resume it anytime.`, 'warning');
+}
+
+function renderHeldBills() {
+    const held = JSON.parse(localStorage.getItem('pos_held_bills') || '[]');
+    const bar = document.getElementById('held-bills-bar');
+    const list = document.getElementById('held-bills-list');
+    if (!bar || !list) return;
+    if (!held.length) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    list.innerHTML = held.map(h => `
+        <div class="held-bill-chip" onclick="resumeHeldBill(${h.id})" title="Resume bill from ${h.label}">
+            <i class='bx bx-receipt'></i> ${h.label} (${h.bill.length} item${h.bill.length !== 1 ? 's' : ''})
+            <span class="del-held" onclick="event.stopPropagation(); deleteHeldBill(${h.id})" title="Discard">&#x2715;</span>
+        </div>`).join('');
+}
+
+window.resumeHeldBill = function(id) {
+    if (currentBill.length && !confirm('Current bill has items. Replace with held bill?')) return;
+    const held = JSON.parse(localStorage.getItem('pos_held_bills') || '[]');
+    const h = held.find(x => x.id === id);
+    if (!h) return;
+    // Restore bill state
+    currentBill = h.bill;
+    imeiInBill = h.imeiInBill;
+    hasImeiInBill = h.hasImeiInBill;
+    voucherCode = h.voucherCode || '';
+    voucherDiscount = h.voucherDiscount || 0;
+    document.getElementById('pos-paid').value = h.amountPaid || '';
+    document.getElementById('pos-voucher').value = h.voucherCode || '';
+    // Restore customer
+    if (h.custName) {
+        document.getElementById('pos-cust-name').value = h.custName;
+        document.getElementById('pos-cust-phone').value = h.custPhone || '';
+        document.getElementById('pos-cust-nic').value = h.custNic || '';
+        document.getElementById('pos-cust-email').value = h.custEmail || '';
+        document.getElementById('pos-cust-address').value = h.custAddr || '';
+        document.getElementById('pos-customer-box').style.display = 'block';
+        const custBtn = document.getElementById('btn-toggle-customer');
+        custBtn.classList.add('btn-primary'); custBtn.classList.remove('btn-outline');
+    }
+    // Restore cashier
+    if (h.cashier) document.getElementById('pos-cashier-select').value = h.cashier;
+    if (h.cashierCustom) document.getElementById('pos-cashier-custom').value = h.cashierCustom;
+    // Remove from held list
+    const newHeld = held.filter(x => x.id !== id);
+    localStorage.setItem('pos_held_bills', JSON.stringify(newHeld));
+    renderBill();
+    renderHeldBills();
+    toast('Bill resumed successfully!');
+};
+
+window.deleteHeldBill = function(id) {
+    if (!confirm('Discard this held bill?')) return;
+    const held = JSON.parse(localStorage.getItem('pos_held_bills') || '[]');
+    localStorage.setItem('pos_held_bills', JSON.stringify(held.filter(x => x.id !== id)));
+    renderHeldBills();
+    toast('Held bill discarded.');
+};
 
 async function loadCashiers() {
     try {
@@ -801,10 +910,13 @@ async function loadCustomers() {
             </tr>`).join('');
         }
         
+        // Populate POS customer dropdown (always kept up to date)
         const sel = document.getElementById('pos-cust-select');
         if (sel) {
-            sel.innerHTML = '<option value="">+ New Customer (Type below)</option>' + 
-                customers.map(c => `<option value="${c.id}">${c.name} - ${c.phone}</option>`).join('');
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">+ New / Walk-in</option>' + 
+                customers.map(c => `<option value="${c.id}">${c.name} — ${c.phone}${c.nic_number ? ' / ' + c.nic_number : ''}</option>`).join('');
+            if (currentVal) sel.value = currentVal;
         }
     } catch(e) { console.error(e); }
 }
