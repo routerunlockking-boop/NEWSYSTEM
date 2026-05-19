@@ -1197,7 +1197,7 @@ async function loadSupplierPayments() {
                 '<span class="badge badge-red">Unpaid</span>'}</td>
             <td>
                 ${!p.is_paid ?
-                `<button class="btn btn-sm btn-success" style="margin-bottom:4px;width:100%" onclick="openSupplierPayModal('${p.id}', ${p.total_amount}, ${remaining})"><i class='bx bx-money'></i> Pay</button>` :
+                `<button class="btn btn-sm btn-success" style="margin-bottom:4px;width:100%" onclick="openSupplierPayModal('${p.id}')"><i class='bx bx-money'></i> Pay</button>` :
                 '<span style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:4px">✓ Settled</span>'}
                 <button class="btn btn-sm btn-outline" style="padding:2px 6px" onclick="editSupplierRecord('${p.id}')"><i class='bx bx-edit'></i></button>
                 <button class="btn btn-sm btn-danger" style="padding:2px 6px" onclick="deleteSupplierRecord('${p.id}')"><i class='bx bx-trash'></i></button>
@@ -1206,12 +1206,52 @@ async function loadSupplierPayments() {
     } catch(e) { console.error(e); }
 }
 
-window.openSupplierPayModal = function(id, total, rem) {
+window.openSupplierPayModal = function(id) {
+    const p = supplierPaymentsList.find(x => x.id === id);
+    if (!p) return;
+    const paid = p.paid_amount || 0;
+    const rem = p.total_amount - paid;
+    
     document.getElementById('sup-pay-id').value = id;
-    document.getElementById('sup-pay-total').value = 'Rs. ' + parseFloat(total).toLocaleString();
+    document.getElementById('sup-pay-total').value = 'Rs. ' + parseFloat(p.total_amount).toLocaleString();
     document.getElementById('sup-pay-rem').value = 'Rs. ' + parseFloat(rem).toLocaleString();
     document.getElementById('sup-pay-amount').value = rem;
     document.getElementById('sup-pay-notes').value = '';
+    
+    const imeiSec = document.getElementById('sup-pay-imei-section');
+    const imeiList = document.getElementById('sup-pay-imei-list');
+    if (p.is_imei_product && p.imei_numbers && p.imei_numbers.length > 0) {
+        imeiSec.style.display = 'block';
+        const unpaidImeis = p.imei_numbers.filter(i => !(p.paid_imeis || []).includes(i));
+        if (unpaidImeis.length === 0) {
+            imeiList.innerHTML = '<span style="font-size:12px;color:var(--success)">All IMEIs paid.</span>';
+        } else {
+            imeiList.innerHTML = unpaidImeis.map(imei => `
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;background:#fff;padding:4px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+                    <input type="checkbox" class="sup-pay-imei-cb" value="${imei}" data-cost="${p.cost_price}">
+                    ${imei} (Rs. ${p.cost_price.toLocaleString()})
+                </label>
+            `).join('');
+            
+            // Auto-update amount when checkboxes change
+            document.querySelectorAll('.sup-pay-imei-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const checked = document.querySelectorAll('.sup-pay-imei-cb:checked');
+                    if (checked.length > 0) {
+                        let total = 0;
+                        checked.forEach(c => total += parseFloat(c.dataset.cost));
+                        document.getElementById('sup-pay-amount').value = total;
+                    } else {
+                        document.getElementById('sup-pay-amount').value = rem;
+                    }
+                });
+            });
+        }
+    } else {
+        imeiSec.style.display = 'none';
+        imeiList.innerHTML = '';
+    }
+    
     openModal('modal-supplier-pay');
 };
 
@@ -1220,12 +1260,15 @@ document.getElementById('btn-submit-sup-pay')?.addEventListener('click', async (
     const amount = parseFloat(document.getElementById('sup-pay-amount').value);
     const notes = document.getElementById('sup-pay-notes').value.trim();
     
+    // Gather checked IMEIs if any
+    const paid_imeis = Array.from(document.querySelectorAll('.sup-pay-imei-cb:checked')).map(cb => cb.value);
+    
     if (isNaN(amount) || amount <= 0) return toast('Please enter a valid amount', 'error');
     
     try {
         const res = await api(`/suppliers/payments/${id}/pay`, { 
             method: 'PUT', 
-            body: JSON.stringify({ amount, notes }) 
+            body: JSON.stringify({ amount, notes, paid_imeis }) 
         });
         if (!res) return;
         if (!res.ok) throw new Error('Failed to submit payment');

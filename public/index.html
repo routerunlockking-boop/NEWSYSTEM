@@ -622,6 +622,11 @@
         <label>Remaining Balance</label>
         <input type="text" id="sup-pay-rem" class="form-control" disabled style="background:#f1f5f9; font-weight:bold; color:var(--danger)">
     </div>
+    
+    <div class="form-group" id="sup-pay-imei-section" style="display:none; background:rgba(59,130,246,0.05); padding:10px; border-radius:6px; border:1px solid rgba(59,130,246,0.1)">
+        <label style="color:var(--primary)"><i class='bx bx-barcode'></i> Select IMEI items to pay for</label>
+        <div id="sup-pay-imei-list" style="max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-top:8px"></div>
+    </div>
     <div class="form-group">
         <label>Payment Amount *</label>
         <input type="number" id="sup-pay-amount" class="form-control" step="0.01" required>

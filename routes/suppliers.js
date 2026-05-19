@@ -70,7 +70,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // === SUPPLIER PAYMENTS ===
-const { SupplierPayment, Product } = require('../database');
+const { SupplierPayment, Product, ImeiItem } = require('../database');
 
 // Sync all inventory products with a supplier into payment records
 router.post('/sync-inventory', async (req, res) => {
@@ -78,14 +78,27 @@ router.post('/sync-inventory', async (req, res) => {
         const qf = req.user.role === 'admin' ? { supplier: { $ne: '' } } : { user_id: req.user._id, supplier: { $ne: '' } };
         const productsWithSupplier = await Product.find(qf);
         let created = 0;
+        let updated = 0;
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         for (const p of productsWithSupplier) {
             if (!p.supplier) continue;
+            
+            let qty = p.quantity || 1;
+            let isImei = p.is_imei_tracked || false;
+            let imeiList = [];
+            
+            if (isImei) {
+                const imeis = await ImeiItem.find({ product_id: p._id, status: { $in: ['In Stock', 'Sold'] } });
+                qty = imeis.length;
+                imeiList = imeis.map(i => i.imei_number);
+            }
+            if (qty === 0) continue; // Don't create empty records
+
+            const totalAmount = (p.cost_price || 0) * qty;
+
             // Check if a payment record already exists for this product+supplier
             const existing = await SupplierPayment.findOne({ supplier_name: p.supplier, product_name: p.name, user_id: req.user._id });
             if (!existing) {
-                const qty = p.is_imei_tracked ? 1 : (p.quantity || 1);
-                const totalAmount = (p.cost_price || 0) * qty;
                 const paidAmount = p.is_supplier_paid ? totalAmount : 0;
                 await SupplierPayment.create({
                     user_id: req.user._id,
@@ -98,12 +111,29 @@ router.post('/sync-inventory', async (req, res) => {
                     is_paid: p.is_supplier_paid && totalAmount > 0,
                     paid_date: (p.is_supplier_paid && totalAmount > 0) ? today : '',
                     sale_date: today,
-                    notes: 'Auto-synced from inventory'
+                    notes: 'Auto-synced from inventory',
+                    is_imei_product: isImei,
+                    imei_numbers: imeiList,
+                    paid_imeis: p.is_supplier_paid ? imeiList : []
                 });
                 created++;
+            } else if (isImei && existing.imei_numbers.length !== imeiList.length) {
+                // Update existing record with new IMEI stock
+                existing.quantity = qty;
+                existing.total_amount = totalAmount;
+                existing.imei_numbers = imeiList;
+                existing.is_imei_product = true;
+                if (existing.paid_amount >= totalAmount) {
+                    existing.is_paid = true;
+                    if (!existing.paid_date) existing.paid_date = today;
+                } else {
+                    existing.is_paid = false;
+                }
+                await existing.save();
+                updated++;
             }
         }
-        res.json({ message: `Synced. ${created} new record(s) created.`, created });
+        res.json({ message: `Synced. ${created} created, ${updated} updated.`, created, updated });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -130,7 +160,10 @@ router.get('/payments', async (req, res) => {
             sale_date: p.sale_date,
             is_paid: p.is_paid,
             paid_date: p.paid_date || '',
-            notes: p.notes || ''
+            notes: p.notes || '',
+            is_imei_product: p.is_imei_product || false,
+            imei_numbers: p.imei_numbers || [],
+            paid_imeis: p.paid_imeis || []
         })));
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -144,19 +177,32 @@ router.put('/payments/:id/pay', async (req, res) => {
         
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         
+        const { amount, notes, paid_imeis } = req.body;
+        
         let newPaid = payment.paid_amount;
-        if (req.body.amount !== undefined) {
-            newPaid += parseFloat(req.body.amount) || 0;
+        if (amount !== undefined) {
+            newPaid += parseFloat(amount) || 0;
         } else {
             newPaid = payment.total_amount; // fallback to full payment
         }
         
         payment.paid_amount = newPaid;
+        
+        if (paid_imeis && Array.isArray(paid_imeis)) {
+            const currentPaid = new Set(payment.paid_imeis || []);
+            paid_imeis.forEach(imei => currentPaid.add(imei));
+            payment.paid_imeis = Array.from(currentPaid);
+        }
+        
         if (payment.paid_amount >= payment.total_amount) {
             payment.is_paid = true;
             payment.paid_date = today;
+            // If fully paid, mark all as paid
+            if (payment.is_imei_product) {
+                payment.paid_imeis = payment.imei_numbers;
+            }
         }
-        if (req.body.notes) payment.notes = req.body.notes;
+        if (notes) payment.notes = payment.notes ? payment.notes + ' | ' + notes : notes;
         
         await payment.save();
         res.json({ message: 'Payment updated', payment });

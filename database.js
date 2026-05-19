@@ -208,7 +208,8 @@ const SupplierPaymentSchema = new mongoose.Schema({
     paid_date: { type: String, default: '' },
     notes: { type: String, default: '' },
     is_imei_product: { type: Boolean, default: false },
-    imei_numbers: [{ type: String }]
+    imei_numbers: [{ type: String }],
+    paid_imeis: [{ type: String }]
 });
 
 const VoucherSchema = new mongoose.Schema({
