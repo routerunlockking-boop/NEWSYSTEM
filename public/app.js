@@ -1199,6 +1199,7 @@ async function loadSupplierPayments() {
                 ${!p.is_paid ?
                 `<button class="btn btn-sm btn-success" style="margin-bottom:4px;width:100%" onclick="openSupplierPayModal('${p.id}')"><i class='bx bx-money'></i> Pay</button>` :
                 '<span style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:4px">✓ Settled</span>'}
+                <button class="btn btn-sm btn-outline" style="padding:2px 6px" onclick="printSupplierReceiptById('${p.id}')" title="Print Receipt"><i class='bx bx-printer'></i></button>
                 <button class="btn btn-sm btn-outline" style="padding:2px 6px" onclick="editSupplierRecord('${p.id}')"><i class='bx bx-edit'></i></button>
                 <button class="btn btn-sm btn-danger" style="padding:2px 6px" onclick="deleteSupplierRecord('${p.id}')"><i class='bx bx-trash'></i></button>
             </td>
@@ -1272,11 +1273,97 @@ document.getElementById('btn-submit-sup-pay')?.addEventListener('click', async (
         });
         if (!res) return;
         if (!res.ok) throw new Error('Failed to submit payment');
+        const paymentRes = await res.json();
+        
         toast('Payment submitted successfully');
         closeModal('modal-supplier-pay');
-        loadSupplierPayments();
+        await loadSupplierPayments();
+        
+        // Find the updated payment object for printing
+        const p = supplierPaymentsList.find(x => x.id === id);
+        if (p) printSupplierReceipt(paymentRes.payment || p, amount, paid_imeis);
     } catch(e) { toast(e.message, 'error'); }
 });
+
+window.printSupplierReceiptById = function(id) {
+    const p = supplierPaymentsList.find(x => x.id === id);
+    if (p) printSupplierReceipt(p, 0, []);
+};
+
+window.printSupplierReceipt = function(p, paidNow = 0, paidImeisNow = []) {
+    const pa = document.getElementById('print-area');
+    if (!pa) return;
+    
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    let imeiText = '';
+    if (paidImeisNow && paidImeisNow.length > 0) {
+        imeiText = `<div style="font-size:10px; margin-bottom:8px; border-bottom:1px dashed #000; padding-bottom:6px;">
+            <strong>IMEIs Paid For:</strong><br>${paidImeisNow.join(', ')}
+        </div>`;
+    }
+    
+    pa.innerHTML = `
+        <div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">
+            <div style="text-align:center;margin-bottom:12px;">
+                <h1 style="margin:0;font-size:18px;font-weight:800;text-transform:uppercase;">PAYMENT VOUCHER</h1>
+                <p style="margin:2px 0;font-size:11px;font-weight:500;">SmartZone</p>
+                <div style="border-bottom:1.5px dashed #000;margin:8px 0;"></div>
+            </div>
+            
+            <div style="font-size:11px;font-weight:500;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>Date: ${today}</span>
+                    <span>Time: ${time}</span>
+                </div>
+                <div style="margin-top:6px;"><div style="font-weight:700;">Supplier: ${p.supplier_name}</div></div>
+            </div>
+            
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            <div style="font-size:11px;margin-bottom:10px;">
+                <div style="margin-bottom:6px;">
+                    <div style="font-weight:700;margin-bottom:2px;">Product / Reference:</div>
+                    <div>${p.product_name}</div>
+                    ${p.invoice_number ? `<div style="font-size:10px;margin-top:2px;">Invoice: ${p.invoice_number}</div>` : ''}
+                </div>
+                ${imeiText}
+            </div>
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            
+            <div style="font-size:12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>Total Bill:</span>
+                    <span>Rs. ${p.total_amount.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-weight:bold;">
+                    <span>Total Paid So Far:</span>
+                    <span>Rs. ${(p.paid_amount || 0).toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+                </div>
+                ${paidNow > 0 ? `
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#000;">
+                    <span>Paid in this transaction:</span>
+                    <span>Rs. ${paidNow.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+                </div>` : ''}
+                <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;">
+                    <span>Remaining Bal:</span>
+                    <span>Rs. ${Math.max(0, p.total_amount - (p.paid_amount || 0)).toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+                </div>
+            </div>
+            <div style="border-bottom:1.5px dashed #000;margin:10px 0;"></div>
+            
+            <div style="text-align:center;font-size:10px;margin-top:12px;">
+                <p style="margin:0 0 8px 0;">Supplier Payment Record</p>
+                <div style="border-top:1.5px dashed #000;padding-top:10px;margin-top:8px">
+                    <p style="margin:0;font-size:12px;font-family:monospace;color:#555;">Powered by SmartZone</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    window.print();
+};
 
 document.getElementById('btn-add-sup-payment')?.addEventListener('click', () => {
     document.getElementById('supplier-record-form').reset();
