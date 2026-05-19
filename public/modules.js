@@ -116,6 +116,28 @@ function setupProductModal() {
             const d = await res.json();
             if (!res.ok) throw new Error(d.error);
             toast(id ? 'Product updated' : 'Product added');
+
+            // Auto-create a supplier payment record when a new product is added with a supplier
+            if (!id && data.supplier) {
+                try {
+                    const qty = data.quantity || 1;
+                    const totalAmount = data.cost_price * qty;
+                    const paidAmount = data.is_supplier_paid ? totalAmount : 0;
+                    const paymentPayload = {
+                        supplier_name: data.supplier,
+                        product_name: data.name,
+                        quantity: qty,
+                        cost_price: data.cost_price,
+                        total_amount: totalAmount,
+                        paid_amount: paidAmount,
+                        notes: 'Auto-created on product addition'
+                    };
+                    await api('/suppliers/payments', { method: 'POST', body: JSON.stringify(paymentPayload) });
+                } catch(pe) {
+                    console.warn('Could not auto-create supplier payment record:', pe.message);
+                }
+            }
+
             closeModal('modal-product'); loadInventory();
         } catch(e) { toast(e.message,'error'); }
     };
