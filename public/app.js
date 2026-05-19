@@ -1297,13 +1297,20 @@ window.printSupplierReceipt = function(p, paidNow = 0, paidImeisNow = []) {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    let imeiText = '';
+    let imeiHtml = '';
     if (paidImeisNow && paidImeisNow.length > 0) {
-        imeiText = `<div style="font-size:10px; margin-bottom:8px; border-bottom:1px dashed #000; padding-bottom:6px;">
-            <strong>IMEIs Paid For:</strong><br>${paidImeisNow.join(', ')}
-        </div>`;
+        paidImeisNow.forEach(imei => {
+            imeiHtml += `<div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: ${imei}</div>`;
+        });
+    } else if (p.is_imei_product && p.imei_numbers) {
+        p.imei_numbers.forEach(imei => {
+            imeiHtml += `<div style="font-size:10px;color:#333;margin-top:2px;font-family:monospace">IMEI: ${imei}</div>`;
+        });
     }
-    
+
+    let displayQty = paidImeisNow && paidImeisNow.length > 0 ? paidImeisNow.length : p.quantity;
+    let displayAmt = paidImeisNow && paidImeisNow.length > 0 ? paidNow : p.total_amount;
+
     pa.innerHTML = `
         <div style="width:100%;max-width:80mm;font-family:sans-serif;color:#000;">
             <div style="text-align:center;margin-bottom:12px;">
@@ -1318,16 +1325,26 @@ window.printSupplierReceipt = function(p, paidNow = 0, paidImeisNow = []) {
                     <span>Time: ${time}</span>
                 </div>
                 <div style="margin-top:6px;"><div style="font-weight:700;">Supplier: ${p.supplier_name}</div></div>
+                ${p.invoice_number ? `<div style="margin-top:2px;">Invoice: ${p.invoice_number}</div>` : ''}
             </div>
             
             <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:11px;margin-bottom:8px;">
+                <span style="width:55%;text-align:left">Item</span>
+                <span style="width:15%;text-align:center">Qty</span>
+                <span style="width:30%;text-align:right">Amount</span>
+            </div>
+            <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
+            
             <div style="font-size:11px;margin-bottom:10px;">
                 <div style="margin-bottom:6px;">
-                    <div style="font-weight:700;margin-bottom:2px;">Product / Reference:</div>
-                    <div>${p.product_name}</div>
-                    ${p.invoice_number ? `<div style="font-size:10px;margin-top:2px;">Invoice: ${p.invoice_number}</div>` : ''}
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <span style="width:55%;word-break:break-word;padding-right:4px">${p.product_name}</span>
+                        <span style="width:15%;text-align:center">${displayQty}</span>
+                        <span style="width:30%;text-align:right">${displayAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+                    </div>
+                    ${imeiHtml}
                 </div>
-                ${imeiText}
             </div>
             <div style="border-bottom:1.5px dashed #000;margin-bottom:8px;"></div>
             
